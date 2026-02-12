@@ -32,12 +32,32 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const url = req.url?.split("?")[0] || "";
+
   try {
+    // Handle addon routes (manifest.json, stream/*, etc.)
+    if (
+      url === "/manifest.json" ||
+      url.startsWith("/stream/") ||
+      url.startsWith("/catalog/") ||
+      url.startsWith("/subtitles/")
+    ) {
+      return addonRouter(req, res, () => {
+        // If the SDK somehow falls through, we end it here to prevent headers error
+        if (!res.writableEnded) {
+          res.writeHead(404);
+          res.end();
+        }
+      });
+    }
+
     // Serve custom landing page at root
     if (req.url === "/" || req.url === "/index.html") {
       const filePath = path.join(publicDir, "landing.html");
       if (fs.existsSync(filePath)) {
-        const html = fs.readFileSync(filePath, "utf8").replace("{{VERSION}}", pkg.version);
+        const html = fs
+          .readFileSync(filePath, "utf8")
+          .replace("{{VERSION}}", pkg.version);
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(html);
         return;
@@ -84,18 +104,10 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Handle addon routes (manifest.json, stream/*, etc.)
-    let handledByAddon = false;
-    addonRouter(req, res, () => {
-      handledByAddon = false;
-    });
-    if (res.writableEnded || res.headersSent) {
-      return;
+    if (!res.writableEnded) {
+      res.writeHead(404);
+      res.end("Not Found");
     }
-
-    // 404 for anything else
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
   } catch (error) {
     console.error("[SERVER] error:", error);
     res.writeHead(500, { "Content-Type": "text/plain" });
@@ -104,10 +116,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(
-    `[SERVER] yastream addon server running on http://${HOST}:${PORT}`,
-  );
-  console.log(`[SERVER] Custom landing page: http://${HOST}:${PORT}/`);
+  console.log(`[SERVER] yastream running on http://${HOST}:${PORT}`);
+  console.log(`[SERVER] Landing page: http://${HOST}:${PORT}/`);
   console.log(`[SERVER] Manifest: http://${HOST}:${PORT}/manifest.json`);
 });
 
