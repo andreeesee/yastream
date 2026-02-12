@@ -21,7 +21,7 @@ builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
     ? console.log(
         `[ADDON ] Get | imdbId: ${imdbId}, season: ${season}, episode: ${episode}`,
       )
-    : console.log("[ADDON ] imdbId:", imdbId);
+    : console.log("[ADDON ] Get | id:", args.id);
 
   try {
     // First get content details from TMDB using IMDB ID

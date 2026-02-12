@@ -89,24 +89,24 @@ class KissKHScraperr {
     episode: number | null = null,
   ): Promise<Stream[] | null> {
     try {
-      const searchResults = await this.searchContent(title, type);
-      if (!searchResults) {
+      const searchResult = await this.searchContent(title, type, year);
+      if (!searchResult) {
         console.log("[KISSKH] No results");
         return null;
       }
-      var episodeId = null;
-      var token = null;
-      var stream = null;
+      let episodeId = null;
+      let token = null;
+      let stream = null;
       switch (type) {
         case "series":
           if (!episode) {
             console.log("[KISSKH] Episode number required for series");
             return null;
           }
-          episodeId = await this._getEpisode(searchResults.id, episode);
+          episodeId = await this._getEpisode(searchResult.id, episode);
           break;
         default:
-          episodeId = searchResults.id;
+          episodeId = await this._getEpisode(searchResult.id, 1);
           break;
       }
       token = await this._getToken(episodeId, this.viGuid);
@@ -130,14 +130,13 @@ class KissKHScraperr {
   async searchContent(
     title: string,
     type: ContentType,
+    year: number | null = null,
   ): Promise<SearchResult | null> {
     switch (type) {
       case "series":
-        const series = await this._getSeries(title);
-        return series;
       case "movie":
-        const movie = await this._getSeries(title);
-        return movie;
+        const shows = await this._getShows(title, year);
+        return shows;
       default:
         return null;
     }
@@ -175,19 +174,22 @@ class KissKHScraperr {
     }
   }
 
-  private async _getSeries(title: string): Promise<SearchResult | null> {
-    const seriesResponse = await axios.get(`${this.searchUrl}${title}&type=0`, {
+  private async _getShows(
+    title: string,
+    year: number | null = null,
+  ): Promise<SearchResult | null> {
+    const searchResponse = await axios.get(`${this.searchUrl}${title}&type=0`, {
       headers: this.headers,
     });
-    const seriesData = seriesResponse.data;
-    if (!seriesData) {
+    const showData = searchResponse.data;
+    if (!showData) {
       return null;
     }
-    const seriesList = seriesData.slice(0, 15) as SearchResult[];
-    const series = this._bestMatch(seriesList, title);
-    const seriesId = series.id;
-    console.log(`[KISSKH] SeriesId | ${JSON.stringify(seriesId)}`);
-    const result: SearchResult = { id: seriesId, title: series.title };
+    const showList = showData.slice(0, 15) as SearchResult[];
+    const matchTitle = year ? `${title} ${year}` : title;
+    const show = this._bestMatch(showList, matchTitle);
+    const result: SearchResult = { id: show.id, title: show.title };
+    console.log(`[KISSKH] SeriesId/MovieId | ${JSON.stringify(show.id)}`);
     return result;
   }
 
@@ -230,7 +232,7 @@ class KissKHScraperr {
     const options = {
       keys: ["title"],
       includeScore: true,
-      threshold: 0.2,
+      threshold: 0.4, // 0 is none, 1 is all
     };
 
     const fuse = new Fuse(results, options);
