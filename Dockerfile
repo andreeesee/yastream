@@ -16,6 +16,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /app/dist ./
+COPY --from=builder /app/package.json ./
 COPY --from=builder /app/public ./public
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
