@@ -4,7 +4,7 @@ import path from "path";
 import stremioPkg from "stremio-addon-sdk";
 import addonInterface from "./lib/addon.js";
 import { envGet } from "./lib/env.js";
-const { getRouter } = stremioPkg;
+const { getRouter, publishToCentral } = stremioPkg;
 import pkg from "../package.json" with { type: "json" };
 
 const HOST = "0.0.0.0";
@@ -122,5 +122,4 @@ server.listen(PORT, HOST, () => {
 });
 
 // when you've deployed your addon, un-comment this line
-// publishToCentral("https://my-addon.awesome/manifest.json")
-// for more information on deploying, see: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/deploying/README.md
+publishToCentral("https://yastream.tamthai.de/manifest.json")
