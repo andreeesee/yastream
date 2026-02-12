@@ -1,0 +1,112 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  --background: #393939;
+  --foreground: rgb(255, 241, 227);
+  color: var(--foreground);
+}
+
+body {
+  font-family: sans-serif;
+  background: var(--background);
+  display: flex;
+  justify-content: center;
+  height: 100vh;
+}
+
+.container {
+  background: var(--background);
+  border: var(--foreground);
+  border-width: 2px;
+  width: 40rem;
+  padding: 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+h1 {
+  color: var(--foreground);
+  font-size: 4em;
+  font-weight: 700;
+  background-color: var(--background);
+  margin: 0;
+  z-index: 2;
+  position: relative;
+  padding: 0px 1rem;
+}
+
+h2 {
+  margin-top: 0.7rem;
+  font-size: 1.5rem;
+}
+
+p {
+  font-size: 1.1em;
+  margin-top: 0.5rem;
+}
+
+.install-section {
+  margin: 1rem 0 0 0;
+}
+
+.install-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  margin-bottom: 40px;
+}
+
+.btn {
+  display: inline-block;
+  text-decoration: none;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  margin-top: 1rem;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #6c757d;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+}
+
+.copy-btn {
+  background: #28a745;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background 0.3s ease;
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  background: #218838;
+}

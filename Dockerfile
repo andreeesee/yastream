@@ -16,6 +16,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /app/dist ./
+COPY --from=builder /app/public ./public
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:55913/manifest.json', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
