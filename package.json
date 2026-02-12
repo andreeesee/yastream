@@ -1,6 +1,6 @@
 {
   "name": "yastream",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "description": "Stream asian movies, series and dramas with kisskh",
   "scripts": {
     "start": "node --env-file=.env dist/server.js",

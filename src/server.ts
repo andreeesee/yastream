@@ -1,10 +1,11 @@
 import fs from "fs";
 import http from "http";
 import path from "path";
-import pkg from "stremio-addon-sdk";
+import stremioPkg from "stremio-addon-sdk";
 import addonInterface from "./lib/addon.js";
 import { envGet } from "./lib/env.js";
-const { getRouter } = pkg;
+const { getRouter } = stremioPkg;
+import pkg from "../package.json" with { type: "json" };
 
 const HOST = "0.0.0.0";
 const PORT = Number(envGet("PORT")) || 55913;
@@ -36,7 +37,7 @@ const server = http.createServer(async (req, res) => {
     if (req.url === "/" || req.url === "/index.html") {
       const filePath = path.join(publicDir, "landing.html");
       if (fs.existsSync(filePath)) {
-        const html = fs.readFileSync(filePath, "utf8");
+        const html = fs.readFileSync(filePath, "utf8").replace("{{VERSION}}", pkg.version);
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(html);
         return;
