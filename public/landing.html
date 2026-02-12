@@ -8,6 +8,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/img/yas.png">
     <link rel="stylesheet" href="style.css">
+    <script defer src="https://umami-fs.tamthai.de/script.js"
+        data-website-id="f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"></script>
 </head>
 
 <body>
@@ -31,30 +33,85 @@
             <div class="install-section">
                 <h2>Installation Method</h2>
                 <div class="install-options">
-                    <a id="installApp" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Install in
-                        App <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></a>
-                    <a id="installWeb" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Install for
-                        Web <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></a>
+                    <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
+                        class="btn btn-primary">Install in
+                        App <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                            <path d="m21 3-9 9" />
+                            <path d="M15 3h6v6" />
+                        </svg></a>
+                    <a data-umami-event="installWeb" id="installWeb" target="_blank" rel="noopener noreferrer"
+                        class="btn btn-secondary">Install for
+                        Web <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                            <path d="m21 3-9 9" />
+                            <path d="M15 3h6v6" />
+                        </svg></a>
                 </div>
             </div>
             <h2>Manual Installation</h2>
             <p>If the buttons don't work, use this manifest URL</p>
             <div style="margin-top: 1rem;border: 2px solid var(--foreground); border-radius: .625rem; padding: .5rem;">
                 <code id="manifestUrl"></code>
-                <button onclick="copyUrl()" class="copy-btn">Copy</button>
+                <button data-umami-event="copyManifestUrl" onclick="copyUrl()" class="copy-btn">Copy</button>
             </div>
-
             <div>
-                <div>
-                    <a class="btn btn-secondary" href="https://ko-fi.com/hoangtamthai">Support me with Ko-fi if you love
-                        this
-                        :> <svg style="margin-left: .5rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
+                <a class="btn btn-secondary" href="https://ko-fi.com/hoangtamthai">Support me with Ko-fi if you love
+                    this
+                    :> <svg style="margin-left: .5rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                        <path d="m21 3-9 9" />
+                        <path d="M15 3h6v6" />
+                    </svg></a>
+            </div>
+            <div style="margin-top: 1rem;">
+                <h3>Links</h3>
+                <div style="display: flex; justify-content: center; gap: 2rem; margin-top: .5rem;">
+                    <div style="display: flex; flex-direction: row;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://github.com/hoangtamthai/yastream">Github
+                            <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round"
+                                class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                                <path d="m21 3-9 9" />
+                                <path d="M15 3h6v6" />
+                            </svg></a>
+                    </div>
+                    <div style="display: flex;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://uptime-fs.tamthai.de/status/yastream">Status
+                            <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round"
+                                class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                                <path d="m21 3-9 9" />
+                                <path d="M15 3h6v6" />
+                            </svg></a>
+                    </div>
+                    <div style="display: flex;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
+                            <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round"
+                                class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                                <path d="m21 3-9 9" />
+                                <path d="M15 3h6v6" />
+                            </svg></a>
+                    </div>
                 </div>
             </div>
             <p style="margin-top: 1rem;">2026. By <a href="https://www.tamthai.de">Tam Thai</a></p>

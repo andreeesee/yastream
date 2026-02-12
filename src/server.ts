@@ -4,7 +4,7 @@ import path from "path";
 import stremioPkg from "stremio-addon-sdk";
 import addonInterface from "./lib/addon.js";
 import { envGet } from "./lib/env.js";
-const { getRouter, publishToCentral } = stremioPkg;
+const { getRouter } = stremioPkg;
 import pkg from "../package.json" with { type: "json" };
 
 const HOST = "0.0.0.0";
@@ -13,10 +13,8 @@ const PORT = Number(envGet("PORT")) || 55913;
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, "public");
 
-// Create the addon router
 const addonRouter = getRouter(addonInterface);
 
-// Create custom server
 const server = http.createServer(async (req, res) => {
   // Enable CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -115,11 +113,12 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`[SERVER] yastream running on http://${HOST}:${PORT}`);
-  console.log(`[SERVER] Landing page: http://${HOST}:${PORT}/`);
-  console.log(`[SERVER] Manifest: http://${HOST}:${PORT}/manifest.json`);
-});
-
-// when you've deployed your addon, un-comment this line
-publishToCentral("https://yastream.tamthai.de/manifest.json")
+try {
+  server.listen(PORT, HOST, () => {
+    console.log(`[SERVER] yastream running on http://${HOST}:${PORT}`);
+    console.log(`[SERVER] Landing page: http://${HOST}:${PORT}/`);
+    console.log(`[SERVER] Manifest: http://${HOST}:${PORT}/manifest.json`);
+  });
+} catch (error) {
+  console.log(`[SERVER] Fail to start | ${error}`);
+}

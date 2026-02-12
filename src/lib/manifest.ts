@@ -5,6 +5,7 @@ import { envGet } from "./env.js";
 
 const manifest: Manifest = {
   id: "community.yastream",
+  contactEmail: "tamthai.de@gmail.com",
   version: pkg.version,
   catalogs: [],
   resources: ["stream"],
