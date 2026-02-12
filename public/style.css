@@ -3,7 +3,7 @@
   padding: 0;
   box-sizing: border-box;
   --background: #393939;
-  --foreground: rgb(255, 241, 227);
+  --foreground: #fff1e3;
   color: var(--foreground);
 }
 
