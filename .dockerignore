@@ -1,4 +1,4 @@
-# Dockerignore for AsiaView
+# Dockerignore for yastream
 # Exclude development dependencies
 node_modules/
 npm-debug.log*
