@@ -2,11 +2,14 @@ import { addonBuilder, AddonInterface, ContentType } from "stremio-addon-sdk";
 import KissKHScraperr from "../source/kisskh.js";
 import TMDBService from "../source/tmdb.js";
 
+import { cache } from "../utils/cache.js";
+import { Logger } from "../utils/logger.js";
 import manifest from "./manifest.js";
 const builder = new addonBuilder(manifest);
 
 const scraper = new KissKHScraperr();
 const tmdb = new TMDBService();
+const logger = new Logger("ADDON");
 
 builder.defineSubtitlesHandler(
   async (args: {
@@ -17,7 +20,44 @@ builder.defineSubtitlesHandler(
       videoSize: string;
     };
   }) => {
-    return { subtitles: [] };
+    const noSubtitles = { subtitles: [] };
+    if (!args.id || !args.id.startsWith("tt")) {
+      return noSubtitles;
+    }
+
+    const [imdbId, season, episode] = args.id.split(":");
+    season
+      ? logger.log(
+          `Subtitle | imdbId: ${imdbId}, season: ${season}, episode: ${episode}`,
+        )
+      : logger.log(`Get | id: ${args.id}`);
+    if (!imdbId) {
+      return noSubtitles;
+    }
+
+    // First get content details from TMDB using IMDB ID
+    const contentType = args.type === "series" ? "series" : "movie";
+    const contentKey = `content:${imdbId}`;
+    const cacheContents = cache.get(contentKey);
+    let content;
+    if (cacheContents != null) {
+      content = cacheContents;
+    } else {
+      content = await tmdb.getContentDetails(imdbId, contentType);
+      cache.set(contentKey, content, 24 * 60 * 60 * 1000); // ttl 24h
+    }
+
+    if (!content) {
+      logger.log(`No TMDB found ${imdbId}`);
+      return noSubtitles;
+    }
+
+    const title = content.title;
+    const type = content.type;
+    const year = content.year;
+    const subtitleKey = `subtitles:${title}:${type}:${year}:${episode}`;
+    const subtitles = cache.get(subtitleKey);
+    return subtitles;
   },
 );
 
@@ -31,33 +71,41 @@ builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
     return { streams: [] };
   }
   season
-    ? console.log(
-        `[ADDON ] Get | imdbId: ${imdbId}, season: ${season}, episode: ${episode}`,
+    ? logger.log(
+        `Stream | imdbId: ${imdbId}, season: ${season}, episode: ${episode}`,
       )
-    : console.log("[ADDON ] Get | id:", args.id);
+    : logger.log(`Get | id: ${args.id}`);
 
   try {
     // First get content details from TMDB using IMDB ID
     const contentType = args.type === "series" ? "series" : "movie";
-    const contentDetails = await tmdb.getContentDetails(imdbId, contentType);
+    const contentKey = `content:${imdbId}`;
+    const cacheContents = cache.get(contentKey);
+    let content;
+    if (cacheContents != null) {
+      content = cacheContents;
+    } else {
+      content = await tmdb.getContentDetails(imdbId, contentType);
+      cache.set(contentKey, content, 24 * 60 * 60 * 1000); // ttl 24h
+    }
 
-    if (!contentDetails) {
-      console.log(`[ADDON ] No TMDB found ${imdbId}`);
+    if (!content) {
+      logger.log(`No TMDB found ${imdbId}`);
       return { streams: [] };
     }
 
     // Search for streams using the TMDB title
     const streams = await scraper.getStreams(
-      contentDetails.title,
-      contentDetails.type,
-      contentDetails.year,
+      content.title,
+      content.type,
+      content.year,
       season ? parseInt(season) : null,
       episode ? parseInt(episode) : null,
     );
 
     return { streams: streams || [] };
   } catch (error) {
-    console.error("Stream handler error:", error);
+    logger.error(`Stream handler error: ${error}`);
     return { streams: [] };
   }
 });

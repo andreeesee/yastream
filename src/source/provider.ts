@@ -1,5 +1,5 @@
 import { ContentType, Stream } from "stremio-addon-sdk";
-import { Logger } from "../lib/logger.js";
+import { Logger } from "../utils/logger.js";
 
 export abstract class BaseProvider {
   abstract baseUrl: string;

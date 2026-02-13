@@ -1,8 +1,8 @@
 import axios from "axios";
 import { ContentType } from "stremio-addon-sdk";
 import { URLSearchParams } from "url";
-import { envGetRequired } from "../lib/env.js";
-import { Logger } from "../lib/logger.js";
+import { envGetRequired } from "../utils/env.js";
+import { Logger } from "../utils/logger.js";
 
 interface ContentDetails {
   title: string;

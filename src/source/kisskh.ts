@@ -4,9 +4,9 @@ import * as cheerio from "cheerio";
 import * as crypto from "crypto";
 import Fuse from "fuse.js";
 import { ContentType, Stream, Subtitle } from "stremio-addon-sdk";
-import { BaseProvider } from "./provider.js";
+import { cache } from "../utils/cache.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
-import { group } from "console";
+import { BaseProvider } from "./provider.js";
 
 interface SearchResult {
   id: string;
@@ -73,6 +73,13 @@ class KissKHScraperr extends BaseProvider {
     episode: number | null = null,
   ): Promise<Stream[] | null> {
     try {
+      const streamKey = `streams:${title}:${type}:${year}:${episode}`;
+      const subtitleKey = `subtitles:${title}:${type}:${year}:${episode}`;
+      const cacheStreams = cache.get(streamKey);
+      if (cacheStreams !== null) {
+        return cacheStreams;
+      }
+
       const searchResult = await this.searchContent(title, type, year);
       if (!searchResult) {
         this.logger.log("No results");
@@ -95,19 +102,31 @@ class KissKHScraperr extends BaseProvider {
       }
       token = await this._getToken(episodeId, this.viGuid);
       stream = await this._getStream(episodeId, token);
-      const subtitles = await this._getSub(episodeId);
-      return [
+
+      // Handle subtitles
+      let subtitles = cache.get(subtitleKey);
+      if (!subtitles) {
+        subtitles = await this._getSubtitles(episodeId);
+        cache.set(subtitleKey, subtitles);
+      }
+
+      const formatTitle = season
+        ? `${searchResult.title} S${season.toString().padStart(2, "0")}E${episode?.toString().padStart(2, "0")}`
+        : `${searchResult.title} ${year}`;
+      const streams: Stream[] = [
         {
           url: this._fixUrl(stream.Video!),
           name: "yastream",
-          title: searchResult.title,
+          title: formatTitle,
           subtitles: subtitles,
           behaviorHints: {
             notWebReady: true,
-            group: `yastream|kisskh|${title}`,
+            group: `yastream-kisskh`,
           },
         },
       ];
+      cache.set(streamKey, streams, 2 * 60 * 60 * 1000);
+      return streams;
     } catch (error: any) {
       this.logger.error(`Error | ${error.message}`);
     }
@@ -207,7 +226,7 @@ class KissKHScraperr extends BaseProvider {
     return stream;
   }
 
-  private async _getSub(episodeId: string): Promise<Subtitle[]> {
+  private async _getSubtitles(episodeId: string): Promise<Subtitle[]> {
     const token = await this._getToken(episodeId, this.subGuid);
     const subtitleUrl = this.subUrl.replace("{id}", episodeId) + token;
     this.logger.log(`Subtitles URL | ${subtitleUrl}`);
