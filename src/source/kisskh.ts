@@ -100,7 +100,7 @@ class KissKHScraperr extends BaseProvider {
         {
           url: this._fixUrl(stream.Video!),
           name: "yastream",
-          title,
+          title: searchResult.title,
           subtitles: subtitles,
           behaviorHints: {
             notWebReady: true,
