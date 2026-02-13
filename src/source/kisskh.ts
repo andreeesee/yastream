@@ -105,7 +105,7 @@ class KissKHScraperr extends BaseProvider {
 
       // Handle subtitles
       let subtitles = cache.get(subtitleKey);
-      if (!subtitles) {
+      if (subtitles == null) {
         subtitles = await this._getSubtitles(episodeId);
         cache.set(subtitleKey, subtitles);
       }
@@ -118,7 +118,7 @@ class KissKHScraperr extends BaseProvider {
           url: this._fixUrl(stream.Video!),
           name: "yastream",
           title: formatTitle,
-          subtitles: subtitles,
+          subtitles: subtitles || [],
           behaviorHints: {
             notWebReady: true,
             group: `yastream-kisskh`,

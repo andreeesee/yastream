@@ -57,7 +57,7 @@ builder.defineSubtitlesHandler(
     const year = content.year;
     const subtitleKey = `subtitles:${title}:${type}:${year}:${episode}`;
     const subtitles = cache.get(subtitleKey);
-    return subtitles;
+    return subtitles || [];
   },
 );
 
