@@ -8,6 +8,19 @@ const builder = new addonBuilder(manifest);
 const scraper = new KissKHScraperr();
 const tmdb = new TMDBService();
 
+builder.defineSubtitlesHandler(
+  async (args: {
+    type: ContentType;
+    id: string;
+    extra: {
+      videoHash: string;
+      videoSize: string;
+    };
+  }) => {
+    return { subtitles: [] };
+  },
+);
+
 builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
   if (!args.id || !args.id.startsWith("tt")) {
     return { streams: [] };
@@ -42,17 +55,7 @@ builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
       episode ? parseInt(episode) : null,
     );
 
-    return {
-      streams: (streams || []).map((stream) => ({
-        name: stream.name || "yastream",
-        title: `kisskh | ${contentDetails.title}`,
-        url: stream.url,
-        behaviorHints: {
-          notWebReady: true,
-        },
-        subtitles: stream.subtitles,
-      })),
-    };
+    return { streams: streams || [] };
   } catch (error) {
     console.error("Stream handler error:", error);
     return { streams: [] };

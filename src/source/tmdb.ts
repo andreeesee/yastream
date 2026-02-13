@@ -1,8 +1,8 @@
 import axios from "axios";
-import console from "console";
 import { ContentType } from "stremio-addon-sdk";
 import { URLSearchParams } from "url";
 import { envGetRequired } from "../lib/env.js";
+import { Logger } from "../lib/logger.js";
 
 interface ContentDetails {
   title: string;
@@ -24,6 +24,7 @@ interface ContentDetails {
 class TMDBService {
   private apiKey: string;
   private baseUrl: string;
+  private logger: Logger = new Logger("TMDB");
 
   constructor() {
     this.apiKey = envGetRequired("TMDB_API_KEY");
@@ -39,7 +40,7 @@ class TMDBService {
       if (findResponse.movie_results && findResponse.movie_results.length > 0) {
         const movie = findResponse.movie_results[0];
         const year = new Date(movie.release_date).getFullYear();
-        console.log(`[TMDB  ] Found | ${movie.title} (${year})`);
+        this.logger.log(`Found | ${movie.title} ${year}`);
         return {
           title: movie.title,
           overview: movie.overview,
@@ -51,7 +52,7 @@ class TMDBService {
 
       return null;
     } catch (error: any) {
-      console.error("[TMDB  ] movie details error |", error.message);
+      this.logger.error(`Movie details error | ${error.message}`);
       return null;
     }
   }
@@ -64,7 +65,7 @@ class TMDBService {
       if (findResponse.tv_results && findResponse.tv_results.length > 0) {
         const series = findResponse.tv_results[0];
         const year = new Date(series.first_air_date).getFullYear();
-        console.log(`[TMDB  ] Found | ${series.name} (${year})`);
+        this.logger.log(`Found | ${series.name} ${year}`);
         return {
           title: series.name,
           overview: series.overview,
@@ -76,7 +77,7 @@ class TMDBService {
 
       return null;
     } catch (error: any) {
-      console.error("[TMDB  ] Series details error |", error.message);
+      this.logger.error(`Series details error | ${error.message}`);
       return null;
     }
   }
@@ -131,7 +132,7 @@ class TMDBService {
 
   //     return filteredResults;
   //   } catch (error: any) {
-  //     console.error("[TMDB] Search error |", error.message);
+  //     this.logger.error("[TMDB] Search error |", error.message);
   //     return [];
   //   }
   // }

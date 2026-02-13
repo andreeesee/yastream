@@ -6,6 +6,7 @@ import Fuse from "fuse.js";
 import { ContentType, Stream, Subtitle } from "stremio-addon-sdk";
 import { BaseProvider } from "./provider.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
+import { group } from "console";
 
 interface SearchResult {
   id: string;
@@ -101,6 +102,10 @@ class KissKHScraperr extends BaseProvider {
           name: "yastream",
           title,
           subtitles: subtitles,
+          behaviorHints: {
+            notWebReady: true,
+            group: `yastream|kisskh|${title}`,
+          },
         },
       ];
     } catch (error: any) {
@@ -167,9 +172,8 @@ class KissKHScraperr extends BaseProvider {
     if (!showData) {
       return null;
     }
-    const showList = showData.slice(0, 15) as SearchResult[];
-    const matchTitle = year ? `${title} ${year}` : title;
-    const show = this._bestMatch(showList, matchTitle);
+    const showList = showData.slice(0, 20) as SearchResult[]; // get top 20
+    const show = this._bestMatch(showList, title, year?.toString() || "");
     const result: SearchResult = { id: show.id, title: show.title };
     this.logger.log(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
     return result;
@@ -230,7 +234,16 @@ class KissKHScraperr extends BaseProvider {
     return url;
   }
 
-  private _bestMatch(results: SearchResult[], title: string): SearchResult {
+  /**
+   *
+   * Match with only title first if has good score (<0.1) return it
+   * Else match with `title year` and if has better score return it otherwise return first result.
+   */
+  private _bestMatch(
+    results: SearchResult[],
+    title: string,
+    year: string,
+  ): SearchResult {
     const options = {
       keys: ["title"],
       includeScore: true,
@@ -238,15 +251,37 @@ class KissKHScraperr extends BaseProvider {
     };
 
     const fuse = new Fuse(results, options);
-    const searchResult = fuse.search(title);
 
-    if (searchResult.length === 0) {
-      throw new Error("No search results found");
+    // search with only title
+    const titleResult = fuse.search(title);
+    let result;
+    let score = 1;
+    if (titleResult.length !== 0) {
+      result = titleResult[0]!;
+      score = result.score || 1;
+      if (score < 0.1) {
+        this.logger.log(`Match | ${result.item.title} : ${score.toFixed(2)}`);
+        return result.item;
+      }
+    } else {
+      // search with title + year
+      const titleYearResult = fuse.search(title + " " + year);
+      if (titleYearResult.length === 0) {
+        throw new Error("No search results found");
+      }
+      result = titleYearResult[0]!;
+      if ((result.score || 1) < score) {
+        score = result.score || 1;
+        this.logger.log(`Match | ${result.item.title} : ${score.toFixed(2)}`);
+        return result.item;
+      }
     }
 
-    const firstResult = searchResult[0]!;
-    this.logger.log(`Match | ${firstResult.item.title}`);
-    return firstResult.item;
+    if (!result) {
+      throw new Error("No search results found");
+    }
+    this.logger.log(`Match | ${result.item.title} : ${score.toFixed(2)}`);
+    return result.item;
   }
 }
 

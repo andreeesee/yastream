@@ -8,7 +8,7 @@ const manifest: Manifest = {
   contactEmail: "tamthai.de@gmail.com",
   version: pkg.version,
   catalogs: [],
-  resources: ["stream"],
+  resources: ["stream", "subtitles"],
   logo: `https://${envGet("DOMAIN")}/img/yas.png`,
   idPrefixes: ["tt", "tmdb:"],
   types: ["movie", "series"],
