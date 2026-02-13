@@ -45,12 +45,12 @@ builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
     return {
       streams: (streams || []).map((stream) => ({
         name: stream.name || "yastream",
-        title: `${stream.description || "Stream from KissKH"} | ${contentDetails.title}`,
+        title: `kisskh | ${contentDetails.title}`,
         url: stream.url,
         behaviorHints: {
           notWebReady: true,
         },
-        subtitles: [],
+        subtitles: stream.subtitles,
       })),
     };
   } catch (error) {

@@ -3,16 +3,9 @@ import { Buffer } from "buffer";
 import * as cheerio from "cheerio";
 import * as crypto from "crypto";
 import Fuse from "fuse.js";
-import { ContentType } from "stremio-addon-sdk";
-
-interface Stream {
-  url: string;
-  type: ContentType;
-  season?: number | null;
-  episode?: number | null;
-  name: string;
-  description: string;
-}
+import { ContentType, Stream, Subtitle } from "stremio-addon-sdk";
+import { BaseProvider } from "./provider.js";
+import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 
 interface SearchResult {
   id: string;
@@ -28,6 +21,12 @@ interface StreamResponse {
   Video: string;
   [key: string]: any;
 }
+interface SubResponse {
+  src: string;
+  label: string;
+  land: string;
+  default: boolean;
+}
 
 interface DecryptionKeys {
   [key: string]: {
@@ -36,49 +35,33 @@ interface DecryptionKeys {
   };
 }
 
-class KissKHScraperr {
-  private baseUrl: string;
-  private headers: Record<string, string>;
-  private subGuid: string;
-  private viGuid: string;
-  private searchUrl: string;
-  private seriesUrl: string;
-  private episodeUrl: string;
-  private DECRYPT_SUBS: DecryptionKeys;
-  private tokenJsCode: string | null;
+class KissKHScraperr extends BaseProvider {
+  readonly baseUrl: string = "https://kisskh.co/";
+  private subGuid: string = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
+  private viGuid: string = "62f176f3bb1b5b8e70e39932ad34a0c7";
+  private searchUrl: string = this.baseUrl + "api/DramaList/Search?q=";
+  private seriesUrl: string = this.baseUrl + "api/DramaList/Drama/";
+  private episodeUrl: string =
+    this.baseUrl + "api/DramaList/Episode/{id}.png?kkey=";
+  private subUrl: string = this.baseUrl + "api/Sub/{id}?kkey=";
+  private DECRYPT_SUBS: DecryptionKeys = {
+    txt: {
+      key: Buffer.from("8056483646328763"),
+      iv: Buffer.from("6852612370185273"),
+    },
+    txt1: {
+      key: Buffer.from("AmSmZVcH93UQUezi"),
+      iv: Buffer.from("ReBKWW8cqdjPEnF6"),
+    },
+    default: {
+      key: Buffer.from("sWODXX04QRTkHdlZ"),
+      iv: Buffer.from("8pwhapJeC4hrS9hO"),
+    },
+  };
+  private tokenJsCode: string | null = null;
 
   constructor() {
-    this.baseUrl = "https://kisskh.co/";
-    this.headers = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-      Accept: "aplication/json",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Accept-Encoding": "gzip, deflate",
-      Connection: "keep-alive",
-      "Upgrade-Insecure-Requests": "1",
-    };
-    this.subGuid = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
-    this.viGuid = "62f176f3bb1b5b8e70e39932ad34a0c7";
-    this.searchUrl = this.baseUrl + "api/DramaList/Search?q=";
-    this.seriesUrl = this.baseUrl + "api/DramaList/Drama/";
-    this.episodeUrl = this.baseUrl + "api/DramaList/Episode/{id}.png?kkey=";
-
-    this.DECRYPT_SUBS = {
-      txt: {
-        key: Buffer.from("8056483646328763"),
-        iv: Buffer.from("6852612370185273"),
-      },
-      txt1: {
-        key: Buffer.from("AmSmZVcH93UQUezi"),
-        iv: Buffer.from("ReBKWW8cqdjPEnF6"),
-      },
-      default: {
-        key: Buffer.from("sWODXX04QRTkHdlZ"),
-        iv: Buffer.from("8pwhapJeC4hrS9hO"),
-      },
-    };
-    this.tokenJsCode = null;
+    super("KISSKH");
   }
 
   async getStreams(
@@ -91,7 +74,7 @@ class KissKHScraperr {
     try {
       const searchResult = await this.searchContent(title, type, year);
       if (!searchResult) {
-        console.log("[KISSKH] No results");
+        this.logger.log("No results");
         return null;
       }
       let episodeId = null;
@@ -100,7 +83,7 @@ class KissKHScraperr {
       switch (type) {
         case "series":
           if (!episode) {
-            console.log("[KISSKH] Episode number required for series");
+            this.logger.log("Episode number required for series");
             return null;
           }
           episodeId = await this._getEpisode(searchResult.id, episode);
@@ -111,18 +94,17 @@ class KissKHScraperr {
       }
       token = await this._getToken(episodeId, this.viGuid);
       stream = await this._getStream(episodeId, token);
+      const subtitles = await this._getSub(episodeId);
       return [
         {
           url: this._fixUrl(stream.Video!),
-          type,
-          season,
-          episode,
           name: "yastream",
-          description: "kisskh",
+          title,
+          subtitles: subtitles,
         },
       ];
     } catch (error: any) {
-      console.error("[KISSKH] Error |", error.message);
+      this.logger.error(`Error | ${error.message}`);
     }
     return null;
   }
@@ -189,7 +171,7 @@ class KissKHScraperr {
     const matchTitle = year ? `${title} ${year}` : title;
     const show = this._bestMatch(showList, matchTitle);
     const result: SearchResult = { id: show.id, title: show.title };
-    console.log(`[KISSKH] SeriesId/MovieId | ${JSON.stringify(show.id)}`);
+    this.logger.log(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
     return result;
   }
 
@@ -202,14 +184,14 @@ class KissKHScraperr {
       | undefined;
     const episodeCount = episodeResponse.data?.episodesCount;
     if (!episodeDatas || episodeCount === undefined) {
-      throw new Error("[KISSKH] No episode data found");
+      throw new Error("No episode data found");
     }
     const episodeData = episodeDatas[episodeCount - episode];
     const episodeId = episodeData?.id;
     if (!episodeId) {
-      throw new Error("[KISSKH] Episode ID not found");
+      throw new Error("Episode ID not found");
     }
-    console.log(`[KISSKH] EpisodeId | ${episodeId}`);
+    this.logger.log(`EpisodeId | ${episodeId}`);
     return episodeId;
   }
 
@@ -217,8 +199,28 @@ class KissKHScraperr {
     const streamUrl = this.episodeUrl.replace("{id}", episodeId) + token;
     const streamResponse = await axios.get(`${streamUrl}`);
     const stream: StreamResponse = streamResponse.data;
-    console.log(`[KISSKH] Stream | ${stream.Video}`);
+    this.logger.log(`Stream | ${stream.Video}`);
     return stream;
+  }
+
+  private async _getSub(episodeId: string): Promise<Subtitle[]> {
+    const token = await this._getToken(episodeId, this.subGuid);
+    const subtitleUrl = this.subUrl.replace("{id}", episodeId) + token;
+    this.logger.log(`Subtitles URL | ${subtitleUrl}`);
+    const response = await axios.get(`${subtitleUrl}`);
+    const subtitleDatas: SubResponse[] = response.data;
+    const subtitles: Subtitle[] = [];
+    for (const [index, subtitleData] of subtitleDatas.entries()) {
+      const lang = iso639FromCountryCode(subtitleData.land as CountryCode);
+      const subtitle: Subtitle = {
+        id: index.toString(),
+        lang: lang,
+        url: subtitleData.src,
+      };
+      subtitles.push(subtitle);
+    }
+    this.logger.log(`Subtitles found | ${subtitles.length}`);
+    return subtitles;
   }
 
   private _fixUrl(url: string): string {
@@ -243,7 +245,7 @@ class KissKHScraperr {
     }
 
     const firstResult = searchResult[0]!;
-    console.log(`[KISSKH] Match | ${firstResult.item.title}`);
+    this.logger.log(`Match | ${firstResult.item.title}`);
     return firstResult.item;
   }
 }
