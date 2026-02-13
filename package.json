@@ -12,6 +12,7 @@
     "node": "^22.0.0 || ^24.0.0"
   },
   "dependencies": {
+    "@umami/node": "^0.4.0",
     "axios": "^1.13.5",
     "cheerio": "^1.2.0",
     "fuse.js": "^7.1.0",

@@ -1,13 +1,19 @@
+import { Umami } from "@umami/node";
 import fs from "fs";
 import http from "http";
 import path from "path";
 import stremioPkg from "stremio-addon-sdk";
+import pkg from "../package.json" with { type: "json" };
 import addonInterface from "./lib/addon.js";
+import { cache } from "./utils/cache.js";
 import { envGet } from "./utils/env.js";
 const { getRouter } = stremioPkg;
-import pkg from "../package.json" with { type: "json" };
-import { cache } from "./utils/cache.js";
 
+const umami = new Umami();
+umami.init({
+  websiteId: "f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c",
+  hostUrl: "https://umami-fs.tamthai.de",
+});
 const HOST = "0.0.0.0";
 const PORT = Number(envGet("PORT")) || 55913;
 
@@ -35,12 +41,20 @@ const server = http.createServer(async (req, res) => {
 
   try {
     // Handle addon routes (manifest.json, stream/*, etc.)
+    const isStreamAndSubtitleUrl =
+      url.startsWith("/stream/") || url.startsWith("/subtitles/");
     if (
       url === "/manifest.json" ||
-      url.startsWith("/stream/") ||
       url.startsWith("/catalog/") ||
-      url.startsWith("/subtitles/")
+      isStreamAndSubtitleUrl
     ) {
+      if (isStreamAndSubtitleUrl) {
+        umami.track({
+          url: url,
+          title: `Addon Request: ${url.split("/")[1] || "Home"}`,
+          referrer: req.headers["user-agent"] || "Stremio",
+        });
+      }
       return addonRouter(req, res, () => {
         // If the SDK somehow falls through, we end it here to prevent headers error
         if (!res.writableEnded) {
