@@ -55,13 +55,14 @@ builder.defineSubtitlesHandler(
     const title = content.title;
     const type = content.type;
     const year = content.year;
-    const subtitleKey = `subtitles:${title}:${type}:${year}:${episode}`;
+    const subtitleKey = `subtitles:${title}:${type}:${year}:${season}:${episode}`;
     const subtitles = cache.get(subtitleKey);
-    return subtitles || [];
+    return { subtitles: subtitles || [] };
   },
 );
 
 builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
+  logger.log(`Stream | ${args.id}`);
   if (!args.id || !args.id.startsWith("tt")) {
     return { streams: [] };
   }
@@ -70,12 +71,6 @@ builder.defineStreamHandler(async (args: { type: ContentType; id: string }) => {
   if (!imdbId) {
     return { streams: [] };
   }
-  season
-    ? logger.log(
-        `Stream | imdbId: ${imdbId}, season: ${season}, episode: ${episode}`,
-      )
-    : logger.log(`Get | id: ${args.id}`);
-
   try {
     // First get content details from TMDB using IMDB ID
     const contentType = args.type === "series" ? "series" : "movie";

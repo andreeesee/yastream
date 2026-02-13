@@ -2,13 +2,13 @@ import axios from "axios";
 import { Buffer } from "buffer";
 import * as cheerio from "cheerio";
 import * as crypto from "crypto";
-import Fuse from "fuse.js";
 import { ContentType, Stream, Subtitle } from "stremio-addon-sdk";
 import { cache } from "../utils/cache.js";
+import { filterShow as bestMatch } from "../utils/fuse.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { BaseProvider } from "./provider.js";
 
-interface SearchResult {
+export interface SearchResult {
   id: string;
   title: string;
 }
@@ -73,14 +73,14 @@ class KissKHScraperr extends BaseProvider {
     episode: number | null = null,
   ): Promise<Stream[] | null> {
     try {
-      const streamKey = `streams:${title}:${type}:${year}:${episode}`;
-      const subtitleKey = `subtitles:${title}:${type}:${year}:${episode}`;
+      const streamKey = `streams:${title}:${type}:${year}:${season}:${episode}`;
+      const subtitleKey = `subtitles:${title}:${type}:${year}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams !== null) {
         return cacheStreams;
       }
 
-      const searchResult = await this.searchContent(title, type, year);
+      const searchResult = await this.searchContent(title, type, year, season);
       if (!searchResult) {
         this.logger.log("No results");
         return null;
@@ -118,7 +118,7 @@ class KissKHScraperr extends BaseProvider {
           url: this._fixUrl(stream.Video!),
           name: "yastream",
           title: formatTitle,
-          subtitles: subtitles || [],
+          // subtitles: subtitles || [],
           behaviorHints: {
             notWebReady: true,
             group: `yastream-kisskh`,
@@ -137,11 +137,12 @@ class KissKHScraperr extends BaseProvider {
     title: string,
     type: ContentType,
     year: number | null = null,
+    season: number | null = null,
   ): Promise<SearchResult | null> {
     switch (type) {
       case "series":
       case "movie":
-        const shows = await this._getShows(title, year);
+        const shows = await this._getShows(title, year, season);
         return shows;
       default:
         return null;
@@ -183,6 +184,7 @@ class KissKHScraperr extends BaseProvider {
   private async _getShows(
     title: string,
     year: number | null = null,
+    season: number | null = null,
   ): Promise<SearchResult | null> {
     const searchResponse = await axios.get(`${this.searchUrl}${title}&type=0`, {
       headers: this.headers,
@@ -192,7 +194,7 @@ class KissKHScraperr extends BaseProvider {
       return null;
     }
     const showList = showData.slice(0, 20) as SearchResult[]; // get top 20
-    const show = this._bestMatch(showList, title, year?.toString() || "");
+    const show = bestMatch(showList, title, year, season);
     const result: SearchResult = { id: show.id, title: show.title };
     this.logger.log(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
     return result;
@@ -251,56 +253,6 @@ class KissKHScraperr extends BaseProvider {
       return `https:${url}`;
     }
     return url;
-  }
-
-  /**
-   *
-   * Match with only title first if has good score (<0.1) return it
-   * Else match with `title year` and if has better score return it otherwise return first result.
-   */
-  private _bestMatch(
-    results: SearchResult[],
-    title: string,
-    year: string,
-  ): SearchResult {
-    const options = {
-      keys: ["title"],
-      includeScore: true,
-      threshold: 0.4, // 0 is none, 1 is all
-    };
-
-    const fuse = new Fuse(results, options);
-
-    // search with only title
-    const titleResult = fuse.search(title);
-    let result;
-    let score = 1;
-    if (titleResult.length !== 0) {
-      result = titleResult[0]!;
-      score = result.score || 1;
-      if (score < 0.1) {
-        this.logger.log(`Match | ${result.item.title} : ${score.toFixed(2)}`);
-        return result.item;
-      }
-    } else {
-      // search with title + year
-      const titleYearResult = fuse.search(title + " " + year);
-      if (titleYearResult.length === 0) {
-        throw new Error("No search results found");
-      }
-      result = titleYearResult[0]!;
-      if ((result.score || 1) < score) {
-        score = result.score || 1;
-        this.logger.log(`Match | ${result.item.title} : ${score.toFixed(2)}`);
-        return result.item;
-      }
-    }
-
-    if (!result) {
-      throw new Error("No search results found");
-    }
-    this.logger.log(`Match | ${result.item.title} : ${score.toFixed(2)}`);
-    return result.item;
   }
 }
 
