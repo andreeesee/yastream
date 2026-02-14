@@ -53,10 +53,7 @@ export function filterShow(
 
   let result: FuseResult<SearchItem> | null = null;
   for (const query of searchTitles) {
-    console.log(`QUERY ${query}`);
-
     const searchResults = fuse.search(query.trim().toLowerCase());
-    console.log(`SEARCH ${JSON.stringify(searchResults)}`);
     if (searchResults.length > 0) {
       const best = searchResults[0]!;
       if (!result || best.score?.toFixed(3)! <= result.score?.toFixed(3)!) {
