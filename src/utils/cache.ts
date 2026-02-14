@@ -44,7 +44,7 @@ class GlobalCache {
   get(key: string): any | null {
     const entry = this.cache.get(key);
     if (!entry) {
-      this.logger.log(`Get null | ${key}`);
+      this.logger.log(`Miss | ${key}`);
       return null;
     }
     return entry.value;

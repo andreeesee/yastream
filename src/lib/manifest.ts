@@ -10,7 +10,7 @@ const manifest: Manifest = {
   catalogs: [],
   resources: ["stream", "subtitles"],
   logo: `https://${envGet("DOMAIN")}/img/yas.png`,
-  idPrefixes: ["tt", "tmdb:"],
+  idPrefixes: ["tt"],
   types: ["movie", "series"],
   name: "yastream",
   description:

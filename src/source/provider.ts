@@ -12,12 +12,10 @@ export abstract class BaseProvider {
     Connection: "keep-alive",
     "Upgrade-Insecure-Requests": "1",
   };
-  protected name: string;
   protected logger: Logger;
 
   constructor(name: string) {
-    this.name = name;
-    this.logger = new Logger(this.name);
+    this.logger = new Logger(name);
   }
 
   abstract getStreams(

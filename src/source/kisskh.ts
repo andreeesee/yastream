@@ -61,10 +61,6 @@ class KissKHScraperr extends BaseProvider {
   };
   private tokenJsCode: string | null = null;
 
-  constructor() {
-    super("KISSKH");
-  }
-
   async getStreams(
     title: string,
     type: ContentType,
@@ -224,7 +220,7 @@ class KissKHScraperr extends BaseProvider {
     const streamUrl = this.episodeUrl.replace("{id}", episodeId) + token;
     const streamResponse = await axios.get(`${streamUrl}`);
     const stream: StreamResponse = streamResponse.data;
-    this.logger.log(`Stream | ${stream.Video}`);
+    this.logger.log(`Stream URL | ${stream.Video}`);
     return stream;
   }
 

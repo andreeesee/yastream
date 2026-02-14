@@ -4,12 +4,14 @@ import { URLSearchParams } from "url";
 import { envGetRequired } from "../utils/env.js";
 import { Logger } from "../utils/logger.js";
 
-interface ContentDetails {
+export interface ContentDetail {
   title: string;
   overview?: string;
   year: number;
   type: ContentType;
   tmdbId: string | number;
+  season: number | null;
+  episode: number | null;
 }
 
 // interface SearchResult {
@@ -31,7 +33,7 @@ class TMDBService {
     this.baseUrl = "https://api.themoviedb.org/3";
   }
 
-  async getMovieDetails(imdbId: string): Promise<ContentDetails | null> {
+  async getMovieDetails(imdbId: string): Promise<ContentDetail | null> {
     try {
       const findResponse = await this._makeRequest("/find/" + imdbId, {
         external_source: "imdb_id",
@@ -47,6 +49,8 @@ class TMDBService {
           year: year,
           type: "movie",
           tmdbId: movie.id,
+          season: null,
+          episode: null,
         };
       }
 
@@ -57,7 +61,7 @@ class TMDBService {
     }
   }
 
-  async getSeriesDetails(imdbId: string): Promise<ContentDetails | null> {
+  async getSeriesDetails(imdbId: string): Promise<ContentDetail | null> {
     try {
       const findResponse = await this._makeRequest("/find/" + imdbId, {
         external_source: "imdb_id",
@@ -72,6 +76,8 @@ class TMDBService {
           year: year,
           type: "series",
           tmdbId: series.id,
+          season: null,
+          episode: null,
         };
       }
 
@@ -85,7 +91,7 @@ class TMDBService {
   async getContentDetails(
     imdbId: string,
     type: ContentType,
-  ): Promise<ContentDetails | null> {
+  ): Promise<ContentDetail | null> {
     if (type === "series") {
       return await this.getSeriesDetails(imdbId);
     } else {
