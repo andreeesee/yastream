@@ -105,3 +105,60 @@ p {
 .copy-btn:hover {
   background: #218838;
 }
+
+/* Changelog */
+/* The Modal (background) */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7); /* Black w/ opacity */
+  backdrop-filter: blur(4px);
+  text-align: left;
+}
+
+/* Modal Content/Box */
+.modal-content {
+  width: 80vw;
+  max-width: 31rem;
+  max-height: 35rem;
+  background-color: var(--background);
+  color: var(--foreground, #ffffff);
+  margin: 10rem auto;
+  padding: 0.8rem;
+  border: 2px solid var(--foreground);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.changelog {
+  padding: 0 1.5rem;
+  padding-bottom: 1rem;
+  margin: 0.8rem 0;
+  background-color: #2a2a2a;
+  border-radius: 1rem;
+  width: 80vw;
+  max-width: 29.2rem;
+  max-height: 28rem;
+  overflow: scroll;
+}
+
+/* The Close Button */
+.close-modal {
+  color: #aaa;
+  display: flex;
+  justify-content: right;
+  margin-right: .8rem;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-modal:hover {
+  color: var(--foreground);
+}

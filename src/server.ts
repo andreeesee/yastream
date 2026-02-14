@@ -88,13 +88,27 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    function simpleMarkdown(md: string) {
+      return md
+        .replace(/^### (.*$)/gim, "<h4>v$1</h4>") // Headers
+        .replace(/^## (.*$)/gim, "<h3>v$1</h3>") // Headers
+        .replace(/^# (.*$)/gim, "<h2>v$1</h2>") // Headers
+        .replace(/^\* (.*$)/gim, "<li>$1</li>") // Bullet points
+        .replace(/^\- (.*$)/gim, "<li>$1</li>") // Bullet points
+        .replace(/\*\*(.*)\*\*/gim, "<b>$1</b>") // Bold
+        // .replace(/\n/gim, "<br>"); // Line breaks
+    }
+
     // Serve custom landing page at root
     if (req.url === "/") {
       const filePath = path.join(publicDir, "landing.html");
       if (fs.existsSync(filePath)) {
+        const changelogFilePath = path.join(rootDir, "CHANGELOG.md");
+        const changelog = await fs.readFileSync(changelogFilePath, "utf-8");
         const html = fs
           .readFileSync(filePath, "utf8")
-          .replace("{{VERSION}}", pkg.version);
+          .replace("{{VERSION}}", pkg.version)
+          .replace("{{CHANGELOG}}", simpleMarkdown(changelog));
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(html);
         return;

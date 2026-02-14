@@ -11,7 +11,18 @@
 
 - Have subtitles for some devices with subtitles in stream route
 
+# 0.1.3
+
+- Improve title ranking system to get best title
+
+# 0.1.2
+
+- Switch to typescript
+
+# 0.1.1
+
+- Load stream from kisskh
+
 # 0.1.0
 
-- Can load stream from kisskh
-- No subtitles
+- Connect to TMDB for title using IMDB id

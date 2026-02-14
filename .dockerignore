@@ -43,7 +43,7 @@ pids/
 
 # Exclude documentation
 README.md
-CHANGELOG.md
+# CHANGELOG.md # need this for showing on landing page
 LICENSE
 
 # Exclude Docker files

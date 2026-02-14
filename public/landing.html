@@ -14,6 +14,7 @@
 
 <body>
     <div class="container">
+        <!-- Title -->
         <div style="display: flex; justify-content: center;">
             <div style="position: relative; width: fit-content;">
                 <div
@@ -26,7 +27,7 @@
             </div>
         </div>
         <h2>Yet Another Stream</h2>
-        <h3>v{{VERSION}}</h2>
+        <h3 id="versionTag" style="cursor: pointer; text-decoration: underline dotted;">v{{VERSION}}</h2>
             <p>Stream Asian Drama and Movies directly from <a target="_blank" rel="noopener noreferrer"
                     href="https://kisskh.co">kisskh</a>. Powered by <a target="_blank" rel="noopener noreferrer"
                     href="https://themoviedb.org">TMDB</a> for metadata like title.</p>
@@ -62,9 +63,12 @@
                 <button data-umami-event="copyManifestUrl" onclick="copyUrl()" class="copy-btn">Copy</button>
             </div>
             <div style="height: 1rem;"></div>
+            <!-- Ko-fi -->
             <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
             <script
                 type='text/javascript'>kofiwidget2.init('Support me on Ko-fi :>', '#72a4f2', 'U7U01U3J0Z'); kofiwidget2.draw();</script>
+
+            <!-- Links -->
             <div style="margin-top: 1rem;">
                 <h3>Links</h3>
                 <div style="display: flex; justify-content: center; gap: 2rem; margin-top: .5rem;">
@@ -106,7 +110,18 @@
                     </div>
                 </div>
             </div>
+            <!-- footer -->
             <p style="margin-top: 1rem; ">2026. By <a href="https://www.tamthai.de">Tam Thai</a></p>
+            <!-- Changelog -->
+            <div id="changelogModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <h2 style="text-align: center;margin-top:-1.5rem;">Changelog</h2>
+                    <div class="changelog">
+                        {{CHANGELOG}}
+                    </div>
+                </div>
+            </div>
     </div>
 
     <script>
@@ -147,6 +162,28 @@
                     btn.textContent = originalText;
                 }, 2000);
             });
+        }
+
+        // Changelog
+        const modal = document.getElementById("changelogModal");
+        const versionBtn = document.getElementById("versionTag");
+        const closeBtn = document.querySelector(".close-modal");
+
+        // Open modal on click
+        versionBtn.onclick = function () {
+            modal.style.display = "block";
+        }
+
+        // Close modal when clicking (X)
+        closeBtn.onclick = function () {
+            modal.style.display = "none";
+        }
+
+        // Close modal when clicking anywhere outside the box
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
         }
     </script>
 </body>
