@@ -6,6 +6,7 @@ interface SearchItem {
   original: SearchResult;
   normalizedTitle: string;
 }
+
 /**
  * Loop through all search terms and find the best fit
  */
@@ -24,7 +25,7 @@ export function filterShow(
     ignoreLocation: false,
     ignoreFieldNorm: true,
     includeMatches: false,
-    distance: 10,
+    distance: 100,
     shouldSort: true,
     findAllMatches: false,
   };
@@ -32,8 +33,10 @@ export function filterShow(
   const normalize = (str: string) => {
     return str
       .toLowerCase()
-      .replace(/(\d+)(st|nd|rd|th)/g, "$1")
-      .replace(/ - /g, " ")
+      .replace(/(\d+)(st|nd|rd|th)/g, "$1") // fix 2nd season -> 2 season
+      .replace(/[\u2018\u2019\u00b4\u201a]/g, "'") // fix quotes
+      .replace(/[^a-z0-9\s']/g, " ") // only character, space and quote
+      .replace(/\s+/g, " ") // no extra spaces
       .trim();
   };
 
@@ -41,19 +44,16 @@ export function filterShow(
     original: originalItem,
     normalizedTitle: normalize(originalItem.title),
   }));
-
   const fuse = new Fuse(searchList, options);
   const searchTitles = [
     title,
     `${title} Season ${season}`,
     `${title} ${season} Season`,
     `${title} ${year}`,
-    `${title} (${year})`,
   ];
-
   let result: FuseResult<SearchItem> | null = null;
   for (const query of searchTitles) {
-    const searchResults = fuse.search(query.trim().toLowerCase());
+    const searchResults = fuse.search(normalize(query));
     if (searchResults.length > 0) {
       const best = searchResults[0]!;
       if (!result || best.score?.toFixed(3)! <= result.score?.toFixed(3)!) {
