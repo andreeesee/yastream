@@ -40,7 +40,9 @@ async function initContent(args: {
     content = cacheContents;
   } else {
     content = await tmdb.getContentDetails(imdbId, contentType);
-    cache.set(contentKey, content, 24 * 60 * 60 * 1000); // ttl 24h
+    if (content) {
+      cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+    }
   }
 
   if (!content) {
