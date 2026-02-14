@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { ContentType } from "stremio-addon-sdk";
 import { URLSearchParams } from "url";
 import { envGetRequired } from "../utils/env.js";
@@ -152,12 +152,11 @@ class TMDBService {
       api_key: this.apiKey,
       ...params,
     });
-    const config = {
+    const config: AxiosRequestConfig = {
       headers: {
         Authorization: "Bearer " + this.apiKey,
         "Content-Type": "application/json",
       },
-      queueLimit: 50,
     };
     const response = await axios.get(`${url}?${queryParams}`, config);
     return response.data;

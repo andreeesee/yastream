@@ -146,13 +146,6 @@ class KissKHScraperr extends BaseProvider {
     }
   }
 
-  private _decrypt(data: string, key: Buffer, iv: Buffer): string {
-    const decipher = crypto.createDecipheriv("aes-128-cbc", key, iv);
-    let decrypted = decipher.update(data, "base64", "utf8");
-    decrypted += decipher.final("utf8");
-    return decrypted;
-  }
-
   private async _getToken(episodeId: string, uid: string): Promise<string> {
     if (!this.tokenJsCode) {
       const { data: html } = await axios.get(this.baseUrl + "index.html");

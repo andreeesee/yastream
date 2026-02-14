@@ -80,13 +80,13 @@ export async function getDecryptedSubtitle(
   }
 
   try {
-    logger.log(`Fetch | ${subtitleUrl}`);
     const response = await axios.get(subtitleUrl, {
       responseType: "text",
       timeout: 10000,
     });
     const encryptedData = response.data as string;
 
+    logger.log(`Decrypt | ${subtitleUrl}`);
     const format = detectFormat(subtitleUrl);
     const { key, iv } = getKeyForFormat(format);
     const decrypted = decrypt(encryptedData, key, iv);
