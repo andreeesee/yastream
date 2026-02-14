@@ -7,6 +7,7 @@ import pkg from "../package.json" with { type: "json" };
 import addonInterface from "./lib/addon.js";
 import { cache } from "./utils/cache.js";
 import { envGet } from "./utils/env.js";
+import { getDecryptedSubtitle } from "./utils/subtitle.js";
 const { getRouter } = stremioPkg;
 
 const umami = new Umami();
@@ -62,6 +63,29 @@ const server = http.createServer(async (req, res) => {
           res.end();
         }
       });
+    }
+
+    // Serve decrypted subtitles
+    if (url.startsWith("/subtitle/")) {
+      const encodedUrl = req.url?.replace("/subtitle/", "");
+      try {
+        const decryptedSubtitle = await getDecryptedSubtitle(encodedUrl!);
+        if (decryptedSubtitle) {
+          res.writeHead(200, {
+            "Content-Type": "text/vtt",
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(decryptedSubtitle);
+        } else {
+          res.writeHead(404, { "Content-Type": "text/plain" });
+          res.end("Subtitle not found or decryption failed");
+        }
+      } catch (error) {
+        console.error("[SERVER] Error serving subtitle:", error);
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("Invalid subtitle URL");
+      }
+      return;
     }
 
     // Serve custom landing page at root

@@ -4,9 +4,11 @@ import * as cheerio from "cheerio";
 import * as crypto from "crypto";
 import { ContentType, Stream, Subtitle } from "stremio-addon-sdk";
 import { cache } from "../utils/cache.js";
+import { envGet } from "../utils/env.js";
 import { filterShow as bestMatch } from "../utils/fuse.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { BaseProvider } from "./provider.js";
+import { getDecryptedSubtitle } from "../utils/subtitle.js";
 
 export interface SearchResult {
   id: string;
@@ -232,15 +234,38 @@ class KissKHScraperr extends BaseProvider {
     const subtitles: Subtitle[] = [];
     for (const [index, subtitleData] of subtitleDatas.entries()) {
       const lang = iso639FromCountryCode(subtitleData.land as CountryCode);
+      const src = subtitleData.src;
       const subtitle: Subtitle = {
         id: index.toString(),
         lang: lang,
-        url: subtitleData.src,
+        url: src,
       };
+      if (this._needsDecryption(src)) {
+        // set to global cache
+        getDecryptedSubtitle(src);
+        const url = this._getProxyUrl(src);
+        subtitle.url = url;
+      }
       subtitles.push(subtitle);
     }
     this.logger.log(`Subtitles found | ${subtitles.length}`);
     return subtitles;
+  }
+
+  private _needsDecryption(url: string): boolean {
+    const lowerUrl = url.split("?")[0]?.toLowerCase() || url.toLowerCase();
+    return lowerUrl.endsWith(".txt") || lowerUrl.endsWith(".txt1");
+  }
+
+  private _getProxyUrl(originalUrl: string): string {
+    const domain = envGet("DOMAIN") || "localhost";
+    const port = envGet("PORT") || "55913";
+    const protocol = domain === "localhost" ? "http" : "https";
+    const baseUrl =
+      domain === "localhost"
+        ? `${protocol}://${domain}:${port}`
+        : `${protocol}://${domain}`;
+    return `${baseUrl}/subtitle/${originalUrl}`;
   }
 
   private _fixUrl(url: string): string {

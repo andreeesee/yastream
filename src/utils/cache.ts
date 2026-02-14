@@ -15,9 +15,9 @@ class GlobalCache {
   /**
    * @param key Unique identifier (e.g., episode ID)
    * @param value The decrypted subtitle string
-   * @param ttlMs Time to live in miliseconds (default 1 hour)
+   * @param ttlMs Time to live in miliseconds (default 2 hour)
    */
-  set(key: string, value: any, ttlMs: number = 60 * 60 * 1000): void {
+  set(key: string, value: any, ttlMs: number = 2 * 60 * 60 * 1000): void {
     // 1. Calculate size of the new value (approx 2 bytes per char for UTF-16)
     const newSize = JSON.stringify(value).length * 2;
 
