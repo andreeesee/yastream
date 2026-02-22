@@ -47,20 +47,6 @@ class KissKHScraperr extends BaseProvider {
   private episodeUrl: string =
     this.baseUrl + "api/DramaList/Episode/{id}.png?kkey=";
   private subUrl: string = this.baseUrl + "api/Sub/{id}?kkey=";
-  private DECRYPT_SUBS: DecryptionKeys = {
-    txt: {
-      key: Buffer.from("8056483646328763"),
-      iv: Buffer.from("6852612370185273"),
-    },
-    txt1: {
-      key: Buffer.from("AmSmZVcH93UQUezi"),
-      iv: Buffer.from("ReBKWW8cqdjPEnF6"),
-    },
-    default: {
-      key: Buffer.from("sWODXX04QRTkHdlZ"),
-      iv: Buffer.from("8pwhapJeC4hrS9hO"),
-    },
-  };
   private tokenJsCode: string | null = null;
 
   async getStreams(
@@ -247,7 +233,7 @@ class KissKHScraperr extends BaseProvider {
 
   private _needsDecryption(url: string): boolean {
     const lowerUrl = url.split("?")[0]?.toLowerCase() || url.toLowerCase();
-    return lowerUrl.endsWith(".txt") || lowerUrl.endsWith(".txt1");
+    return lowerUrl.includes(".txt");
   }
 
   private _getProxyUrl(originalUrl: string): string {
