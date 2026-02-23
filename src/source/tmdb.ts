@@ -2,45 +2,69 @@ import axios, { AxiosRequestConfig } from "axios";
 import { ContentType } from "stremio-addon-sdk";
 import { URLSearchParams } from "url";
 import { envGetRequired } from "../utils/env.js";
-import { Logger } from "../utils/logger.js";
+import { BaseMeta, ContentDetail } from "./meta.js";
 
-export interface ContentDetail {
-  title: string;
-  overview?: string;
-  year: number;
-  type: ContentType;
-  tmdbId: string | number;
-  season: number | null;
-  episode: number | null;
+export interface TmdbFindResponse {
+  movie_results: TmdbMovieResult[];
+  person_results: any[];
+  tv_results: TmdbTvResult[];
+  tv_episode_results: any[];
+  tv_season_results: any[];
 }
 
-// interface SearchResult {
-//   title: string;
-//   overview?: string;
-//   year: number | null;
-//   type: "movie" | "series";
-//   tmdbId: string | number;
-//   imdbId: string | null;
-// }
+export interface TmdbTvResult {
+  id: number;
+  name: string;
+  original_name: string;
+  overview: string;
+  first_air_date: string;
+}
 
-class TMDBService {
-  private apiKey: string;
-  private baseUrl: string;
-  private logger: Logger = new Logger("TMDB");
+export interface TmdbMovieResult {
+  id: number;
+  title: string;
+  original_title: string;
+  overview: string;
+  release_date: string;
+}
 
-  constructor() {
-    this.apiKey = envGetRequired("TMDB_API_KEY");
-    this.baseUrl = "https://api.themoviedb.org/3";
+class TMDBService extends BaseMeta {
+  private apiKey: string = envGetRequired("TMDB_API_KEY");
+  private baseUrl: string = "https://api.themoviedb.org/3";
+
+  async findDetailImdb(
+    imdbId: string,
+    type: ContentType,
+  ): Promise<ContentDetail | null> {
+    if (type === "series") {
+      return await this.findSeriesDetail(imdbId);
+    } else {
+      return await this.findMovieDetail(imdbId);
+    }
   }
 
-  async getMovieDetails(imdbId: string): Promise<ContentDetail | null> {
-    try {
-      const findResponse = await this._makeRequest("/find/" + imdbId, {
-        external_source: "imdb_id",
-      });
+  async getDetailTmdb(
+    tmdbId: string,
+    type: ContentType,
+  ): Promise<ContentDetail | null> {
+    if (type === "series") {
+      return await this.getSeriesDetail(tmdbId);
+    } else {
+      return await this.getMovieDetail(tmdbId);
+    }
+  }
 
-      if (findResponse.movie_results && findResponse.movie_results.length > 0) {
-        const movie = findResponse.movie_results[0];
+  async findMovieDetail(imdbId: string): Promise<ContentDetail | null> {
+    try {
+      const movieResponse: TmdbFindResponse = await this._getRequest(
+        "/find/" + imdbId,
+        {
+          external_source: "imdb_id",
+        },
+      );
+      const movie = movieResponse.movie_results?.[0];
+
+      if (movie) {
         const year = new Date(movie.release_date).getFullYear();
         this.logger.log(`Found | ${movie.title} ${year}`);
         return {
@@ -49,8 +73,6 @@ class TMDBService {
           year: year,
           type: "movie",
           tmdbId: movie.id,
-          season: null,
-          episode: null,
         };
       }
 
@@ -61,13 +83,17 @@ class TMDBService {
     }
   }
 
-  async getSeriesDetails(imdbId: string): Promise<ContentDetail | null> {
+  async findSeriesDetail(imdbId: string): Promise<ContentDetail | null> {
     try {
-      const findResponse = await this._makeRequest("/find/" + imdbId, {
-        external_source: "imdb_id",
-      });
-      if (findResponse.tv_results && findResponse.tv_results.length > 0) {
-        const series = findResponse.tv_results[0];
+      const seriesResponse: TmdbFindResponse = await this._getRequest(
+        "/find/" + imdbId,
+        {
+          external_source: "imdb_id",
+        },
+      );
+      this.logger.debug(JSON.stringify(seriesResponse));
+      const series = seriesResponse.tv_results[0];
+      if (series) {
         const year = new Date(series.first_air_date).getFullYear();
         this.logger.log(`Found | ${series.name} ${year}`);
         return {
@@ -76,8 +102,6 @@ class TMDBService {
           year: year,
           type: "series",
           tmdbId: series.id,
-          season: null,
-          episode: null,
         };
       }
 
@@ -88,68 +112,58 @@ class TMDBService {
     }
   }
 
-  async getContentDetails(
-    imdbId: string,
-    type: ContentType,
-  ): Promise<ContentDetail | null> {
-    if (type === "series") {
-      return await this.getSeriesDetails(imdbId);
-    } else {
-      return await this.getMovieDetails(imdbId);
+  async getMovieDetail(tmdbId: string): Promise<ContentDetail | null> {
+    try {
+      const movie: TmdbMovieResult = await this._getRequest("/movie/" + tmdbId);
+
+      if (movie) {
+        const year = new Date(movie.release_date).getFullYear();
+        this.logger.log(`Get | ${movie.title} ${year}`);
+        return {
+          title: movie.title,
+          overview: movie.overview,
+          year: year,
+          type: "movie",
+          tmdbId: movie.id,
+        };
+      }
+
+      return null;
+    } catch (error: any) {
+      this.logger.error(`Get movie details error | ${error.message}`);
+      return null;
     }
   }
 
-  // async searchByTitle(
-  //   title: string,
-  //   type: ContentType,
-  //   year: number | null = null,
-  // ): Promise<SearchResult[]> {
-  //   try {
-  //     const searchType = type === "series" ? "tv" : "movie";
-  //     const params: any = {
-  //       query: title,
-  //       page: 1,
-  //     };
+  async getSeriesDetail(id: string): Promise<ContentDetail | null> {
+    this.logger.debug(`ID ${id}`);
+    try {
+      const series: TmdbTvResult = await this._getRequest("/tv/" + id);
+      if (series) {
+        const year = new Date(series.first_air_date).getFullYear();
+        this.logger.log(`Get | ${series.name} ${year}`);
+        return {
+          title: series.name,
+          overview: series.overview,
+          year: year,
+          type: "series",
+          tmdbId: series.id,
+        };
+      }
 
-  //     if (year) {
-  //       params.year = year;
-  //     }
+      return null;
+    } catch (error: any) {
+      this.logger.error(`Get series details error | ${error.message}`);
+      return null;
+    }
+  }
 
-  //     const searchResponse = await this.makeRequest(
-  //       "/search/" + searchType,
-  //       params,
-  //     );
-  //     const results = searchResponse.results || [];
-
-  //     const filteredResults = results.slice(0, 5).map(
-  //       (item: any): SearchResult => ({
-  //         title: item.title || item.name,
-  //         overview: item.overview,
-  //         year: item.release_date
-  //           ? new Date(item.release_date).getFullYear()
-  //           : item.first_air_date
-  //             ? new Date(item.first_air_date).getFullYear()
-  //             : null,
-  //         type: searchType === "tv" ? "series" : "movie",
-  //         tmdbId: item.id,
-  //         imdbId: item.imdb_id,
-  //       }),
-  //     );
-
-  //     return filteredResults;
-  //   } catch (error: any) {
-  //     this.logger.error("[TMDB] Search error |", error.message);
-  //     return [];
-  //   }
-  // }
-
-  private async _makeRequest(
+  private async _getRequest(
     endpoint: string,
     params: Record<string, any> = {},
   ): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
     const queryParams = new URLSearchParams({
-      api_key: this.apiKey,
       ...params,
     });
     const config: AxiosRequestConfig = {
@@ -158,6 +172,7 @@ class TMDBService {
         "Content-Type": "application/json",
       },
     };
+    this.logger.log(`${url}?${queryParams}`);
     const response = await axios.get(`${url}?${queryParams}`, config);
     return response.data;
   }

@@ -69,7 +69,7 @@ function detectFormat(url: string): string {
   return "default";
 }
 
-export async function getDecryptedSubtitle(
+export async function getSetDecryptedSubtitle(
   subtitleUrl: string,
 ): Promise<string | null> {
   const decryptSubKey = `decrypt_sub:${subtitleUrl}`;

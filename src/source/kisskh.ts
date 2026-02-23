@@ -1,23 +1,53 @@
 import axios from "axios";
 import { Buffer } from "buffer";
 import * as cheerio from "cheerio";
-import * as crypto from "crypto";
-import { ContentType, Stream, Subtitle } from "stremio-addon-sdk";
+import {
+  ContentType,
+  MetaDetail,
+  MetaPreview,
+  MetaVideo,
+  Stream,
+  Subtitle,
+} from "stremio-addon-sdk";
+import { KisskhCatalog, Prefix } from "../lib/manifest.js";
 import { cache } from "../utils/cache.js";
 import { envGet } from "../utils/env.js";
-import { filterShow as bestMatch } from "../utils/fuse.js";
+import { matchTitle } from "../utils/fuse.js";
+import { parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
+import { getSetDecryptedSubtitle } from "../utils/subtitle.js";
+import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
-import { getDecryptedSubtitle } from "../utils/subtitle.js";
 
 export interface SearchResult {
   id: string;
   title: string;
 }
+export interface KisskhCatalogData {
+  data: KisskhCatalog[];
+}
+export interface KisskhCatalog {
+  episodesCount: number;
+  thumbnail: string;
+  id: number;
+  title: string;
+}
 
-interface EpisodeData {
+interface KisskhDetail {
   id: string;
-  [key: string]: any;
+  thumbnail: string;
+  title: string;
+  country: string;
+  description: string;
+  episodesCount: number;
+  releaseDate: string;
+  episodes: Episode[];
+}
+
+interface Episode {
+  id: number;
+  number: number;
+  sub: number;
 }
 
 interface StreamResponse {
@@ -31,34 +61,141 @@ interface SubResponse {
   default: boolean;
 }
 
-interface DecryptionKeys {
-  [key: string]: {
-    key: Buffer;
-    iv: Buffer;
-  };
-}
-
 class KissKHScraperr extends BaseProvider {
-  readonly baseUrl: string = "https://kisskh.co/";
+  readonly baseUrl: string = "https://kisskh.co";
+  readonly supportedPrefix: Prefix[] = [
+    Prefix.IMDB,
+    Prefix.TMDB,
+    Prefix.TVDB,
+    Prefix.KISSKH,
+  ];
+  private pageSize = 10;
   private subGuid: string = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
   private viGuid: string = "62f176f3bb1b5b8e70e39932ad34a0c7";
-  private searchUrl: string = this.baseUrl + "api/DramaList/Search?q=";
-  private seriesUrl: string = this.baseUrl + "api/DramaList/Drama/";
+  private searchUrl: string = this.baseUrl + "/api/DramaList/Search?q=";
+  private detailUrl: string = this.baseUrl + "/api/DramaList/Drama/";
   private episodeUrl: string =
-    this.baseUrl + "api/DramaList/Episode/{id}.png?kkey=";
-  private subUrl: string = this.baseUrl + "api/Sub/{id}?kkey=";
+    this.baseUrl + "/api/DramaList/Episode/{id}.png?kkey=";
+  private subUrl: string = this.baseUrl + "/api/Sub/{id}?kkey=";
+  private TYPE: Record<ContentType, string> = {
+    series: "1",
+    movie: "2",
+    channel: "1",
+    tv: "1",
+  };
   private tokenJsCode: string | null = null;
+
+  async searchCatalog(
+    id: string,
+    type: ContentType,
+    search: string,
+  ): Promise<MetaPreview[]> {
+    const searchResult = await this.searchContent(search, type);
+    return [];
+  }
+
+  async getCatalog(
+    id: string,
+    type: ContentType,
+    skip?: number,
+  ): Promise<MetaPreview[]> {
+    let url = this.baseUrl;
+    const page = this.getPage(this.pageSize, skip);
+    const t = this.TYPE[type];
+    switch (id) {
+      // case KisskhCatalog.MOVIE_NEW:
+      // case KisskhCatalog.SERIES_NEW:
+      //   url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=0&status=0&order=2`;
+      //   break;
+      // case KisskhCatalog.MOVIE_KOREAN:
+      case KisskhCatalog.SERIES_KOREAN:
+        url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=2&status=0&order=2`;
+        break;
+      // case KisskhCatalog.MOVIE_CHINESE:
+      case KisskhCatalog.SERIES_CHINESE:
+        url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=1&status=0&order=2`;
+        break;
+      default:
+        url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=0&status=0&order=2`;
+        break;
+    }
+    const response = await axios.get(url);
+    const data: KisskhCatalogData = response.data;
+    const metas = data.data.map((kisskhMeta) => {
+      const meta: MetaPreview = {
+        id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
+        name: kisskhMeta.title,
+        type: type,
+        background: kisskhMeta.thumbnail,
+        poster: kisskhMeta.thumbnail,
+        posterShape: "landscape",
+      };
+      return meta;
+    });
+    return metas;
+  }
+
+  async getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
+    const detail = await this.getDetail(id);
+    const season = 1;
+    const date = new Date(detail.releaseDate).toISOString();
+    const videos: MetaVideo[] = detail.episodes.map((episode, index) => {
+      const episodeNum = index + 1;
+      if (type === "series") {
+        return {
+          id: `kisskh:${detail.id.toString()}:${season}:${episodeNum}`,
+          released: date,
+          title: detail.title,
+          type: type,
+          description: detail.title, // no description
+          thumbnail: detail.thumbnail,
+          background: detail.thumbnail,
+          season: season,
+          episode: index + 1,
+        };
+      } else {
+        return {
+          id: `${episode.id.toString()}:${season}:${episodeNum}`,
+          released: date,
+          title: detail.title,
+          type: type,
+          description: detail.title, // no description
+          thumbnail: detail.thumbnail,
+          background: detail.thumbnail,
+        };
+      }
+    });
+    const meta: MetaDetail = {
+      id: `kisskh:${detail.id}`,
+      name: detail.title,
+      poster: detail.thumbnail,
+      background: detail.thumbnail,
+      posterShape: "landscape",
+      type: type,
+      description: detail.description,
+      country: detail.country,
+      released: date,
+      videos: videos,
+    };
+    return meta;
+  }
 
   async getStreams(
     title: string,
     type: ContentType,
-    year: number | null = null,
-    season: number | null = null,
-    episode: number | null = null,
+    year?: number,
+    season?: number,
+    episode?: number,
+    id?: string,
   ): Promise<Stream[] | null> {
     try {
-      const streamKey = `streams:${title}:${type}:${year}:${season}:${episode}`;
-      const subtitleKey = `subtitles:${title}:${type}:${year}:${season}:${episode}`;
+      if (id) {
+        const streamKey = `streams:kisskh:${id}`;
+        const cacheStreams = cache.get(streamKey);
+        if (cacheStreams) return cacheStreams;
+      }
+      const streamKey = `streams:kisskh:${title}:${type}:${year}:${season}:${episode}`;
+      const subtitleKey = `subtitles:kisskh:${title}:${type}:${year}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams !== null) {
         return cacheStreams;
@@ -70,8 +207,6 @@ class KissKHScraperr extends BaseProvider {
         return null;
       }
       let episodeId = null;
-      let token = null;
-      let stream = null;
       switch (type) {
         case "series":
           if (!episode) {
@@ -84,22 +219,25 @@ class KissKHScraperr extends BaseProvider {
           episodeId = await this._getEpisode(searchResult.id, 1);
           break;
       }
-      token = await this._getToken(episodeId, this.viGuid);
-      stream = await this._getStream(episodeId, token);
-
-      // Handle subtitles
-      let subtitles = cache.get(subtitleKey);
-      if (subtitles == null) {
-        subtitles = await this._getSubtitles(episodeId);
-        cache.set(subtitleKey, subtitles);
+      const token = await this._getToken(episodeId, this.viGuid);
+      const stream = await this._getStream(episodeId, token);
+      const url = this._fixUrl(stream.Video!);
+      let info;
+      try {
+        info = await parseStreamInfo(url);
+      } catch (error) {
+        this.logger.error(`Fail to parse stream info | ${error}`);
       }
-
-      const formatTitle = season
-        ? `${searchResult.title} S${season.toString().padStart(2, "0")}E${episode?.toString().padStart(2, "0")}`
-        : `${searchResult.title} ${year}`;
+      const formatTitle = this.formatStreamTitle(
+        searchResult.title,
+        year,
+        season,
+        episode,
+        info,
+      );
       const streams: Stream[] = [
         {
-          url: this._fixUrl(stream.Video!),
+          url: url,
           name: "yastream",
           title: formatTitle,
           behaviorHints: {
@@ -108,12 +246,37 @@ class KissKHScraperr extends BaseProvider {
           },
         },
       ];
-      cache.set(streamKey, streams, 2 * 60 * 60 * 1000);
+
+      const streamIdKey = `streams:kisskh:${episodeId}`;
+      const subtitlesIdKey = `subtitles:kisskh:${episodeId}`;
+
+      // Handle subtitles
+      let subtitles = cache.get(subtitleKey);
+      if (subtitles) {
+        cache.set(subtitleKey, subtitles);
+        cache.set(subtitlesIdKey, subtitles);
+      } else {
+        subtitles = cache.get(subtitlesIdKey);
+        if (subtitles === null) {
+          subtitles = await this._getSubtitles(episodeId);
+          cache.set(subtitleKey, subtitles);
+          cache.set(subtitlesIdKey, subtitles);
+        } else {
+          cache.set(subtitlesIdKey, subtitles);
+        }
+      }
+
+      cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+      cache.set(streamIdKey, streams, 4 * 60 * 60 * 1000);
       return streams;
     } catch (error: any) {
       this.logger.error(`Error | ${error.message}`);
     }
     return null;
+  }
+
+  async getSubtitles(content: ContentDetail): Promise<Subtitle[]> {
+    return [];
   }
 
   async searchContent(
@@ -134,10 +297,10 @@ class KissKHScraperr extends BaseProvider {
 
   private async _getToken(episodeId: string, uid: string): Promise<string> {
     if (!this.tokenJsCode) {
-      const { data: html } = await axios.get(this.baseUrl + "index.html");
+      const { data: html } = await axios.get(this.baseUrl + "/index.html");
       const $ = cheerio.load(html);
       const scriptSrc = $('script[src*="common"]').attr("src");
-      const { data: jsCode } = await axios.get(this.baseUrl + scriptSrc);
+      const { data: jsCode } = await axios.get(this.baseUrl + "/" + scriptSrc);
       this.tokenJsCode = jsCode;
     }
 
@@ -169,45 +332,61 @@ class KissKHScraperr extends BaseProvider {
     if (!showData) {
       return null;
     }
-    const showList = showData.slice(0, 20) as SearchResult[]; // get top 20
-    const show = bestMatch(showList, title, year, season);
+    const showList = showData as SearchResult[];
+    const show = matchTitle(showList, title, year, season);
     const result: SearchResult = { id: show.id, title: show.title };
     this.logger.log(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
     return result;
   }
 
-  private async _getEpisode(seriesId: string, episode: number) {
-    const episodeResponse = await axios.get(`${this.seriesUrl}${seriesId}`, {
+  public async getContent(episodeId: string): Promise<Stream[]> {
+    // const token = await this._getToken(episodeId, this.viGuid);
+    // const stream = await this._getStream(episodeId, token);
+    const streamKey = `streams:kisskh:${episodeId}`;
+    const cacheContent = cache.get(streamKey);
+    return cacheContent;
+  }
+
+  public async getDetail(kisskhId: string): Promise<KisskhDetail> {
+    const episodeResponse = await axios.get(`${this.detailUrl}${kisskhId}`, {
       headers: this.headers,
     });
-    const episodeDatas = episodeResponse.data?.episodes as
-      | EpisodeData[]
-      | undefined;
-    const episodeCount = episodeResponse.data?.episodesCount;
-    if (!episodeDatas || episodeCount === undefined) {
+    const episodesData: KisskhDetail = episodeResponse.data;
+    return episodesData;
+  }
+
+  private async _getEpisode(seriesId: string, episode: number) {
+    const detail = await this.getDetail(seriesId);
+    const episodeCount = detail.episodesCount;
+    if (!detail || episodeCount === undefined) {
       throw new Error("No episode data found");
     }
-    const episodeData = episodeDatas[episodeCount - episode];
+    const fallbackEpisodeData = detail.episodes[episodeCount - episode];
+    const episodeData =
+      detail.episodes.find((episodeData) => {
+        return episodeData.number == episode;
+      }) || fallbackEpisodeData;
+
     const episodeId = episodeData?.id;
     if (!episodeId) {
       throw new Error("Episode ID not found");
     }
     this.logger.log(`EpisodeId | ${episodeId}`);
-    return episodeId;
+    return episodeId.toString();
   }
 
   private async _getStream(episodeId: string, token: string) {
     const streamUrl = this.episodeUrl.replace("{id}", episodeId) + token;
     const streamResponse = await axios.get(`${streamUrl}`);
     const stream: StreamResponse = streamResponse.data;
-    this.logger.log(`Stream URL | ${stream.Video}`);
+    this.logger.log(`Stream Url | ${stream.Video}`);
     return stream;
   }
 
   private async _getSubtitles(episodeId: string): Promise<Subtitle[]> {
     const token = await this._getToken(episodeId, this.subGuid);
     const subtitleUrl = this.subUrl.replace("{id}", episodeId) + token;
-    this.logger.log(`Subtitles URL | ${subtitleUrl}`);
+    this.logger.log(`Subtitles Url | ${subtitleUrl}`);
     const response = await axios.get(`${subtitleUrl}`);
     const subtitleDatas: SubResponse[] = response.data;
     const subtitles: Subtitle[] = [];
@@ -221,8 +400,8 @@ class KissKHScraperr extends BaseProvider {
       };
       if (this._needsDecryption(src)) {
         // set to global cache
-        getDecryptedSubtitle(src);
-        const url = this._getProxyUrl(src);
+        getSetDecryptedSubtitle(src);
+        const url = this._createSubtitleUrl(src);
         subtitle.url = url;
       }
       subtitles.push(subtitle);
@@ -236,7 +415,7 @@ class KissKHScraperr extends BaseProvider {
     return lowerUrl.includes(".txt");
   }
 
-  private _getProxyUrl(originalUrl: string): string {
+  private _createSubtitleUrl(originalUrl: string): string {
     const domain = envGet("DOMAIN") || "localhost";
     const port = envGet("PORT") || "55913";
     const protocol = domain === "localhost" ? "http" : "https";

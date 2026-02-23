@@ -7,7 +7,7 @@
     </meta>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/img/yas.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
     <script defer src="https://umami-fs.tamthai.de/script.js"
         data-website-id="f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"></script>
 </head>
@@ -15,133 +15,172 @@
 <body>
     <div class="container">
         <!-- Title -->
-        <div style="display: flex; justify-content: center;">
-            <div style="position: relative; width: fit-content;">
-                <div
-                    style="background-color: var(--foreground); z-index: 1; padding-top: 20px; position: absolute; width: 50px; height: 50px; top: -10px;left: -10px;">
-                </div>
-                <h1>yastream</h1>
-                <div
-                    style="background-color: var(--foreground); position: absolute; width: 50px; height: 50px; bottom: -10px;right: -10px;">
+        <div id="title">
+            <div style="display: flex; justify-content: center;">
+                <div style="position: relative; width: fit-content;">
+                    <div
+                        style="background-color: var(--foreground); z-index: 1; padding-top: 20px; position: absolute; width: 50px; height: 50px; top: -10px;left: -10px;">
+                    </div>
+                    <h1>yastream</h1>
+                    <div
+                        style="background-color: var(--foreground); position: absolute; width: 50px; height: 50px; bottom: -10px;right: -10px;">
+                    </div>
                 </div>
             </div>
-        </div>
-        <h2>Yet Another Stream</h2>
-        <h3 id="versionTag" style="cursor: pointer; text-decoration: underline dotted;">v{{VERSION}}</h2>
+            <h2>Yet Another Stream</h2>
+            <h3 id="versionTag" style="cursor: pointer; text-decoration: underline dotted;">v{{VERSION}}</h3>
             <p>Stream Asian Drama and Movies directly from <a target="_blank" rel="noopener noreferrer"
-                    href="https://kisskh.co">kisskh</a>. Powered by <a target="_blank" rel="noopener noreferrer"
-                    href="https://themoviedb.org">TMDB</a> for metadata like title.</p>
-            <div>
-                <h2>Installation Method</h2>
-                <div class="install-options">
-                    <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
-                        class="btn btn-primary">Install in
-                        App <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
-                    <a data-umami-event="installWeb" id="installWeb" target="_blank" rel="noopener noreferrer"
-                        class="btn btn-secondary">Install for
-                        Web <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
+                    href="https://kisskh.co">kisskh</a> and <a target="_blank" rel="noopener noreferrer"
+                    href="https://idramahd.com">idrama</a> (Khmer only). Powered by <a target="_blank"
+                    rel="noopener noreferrer" href="https://themoviedb.org">TMDB</a> and <a target="_blank"
+                    rel="noopener noreferrer" href="https://www.thetvdb.com">TVDB</a> for metadata.</p>
+        </div>
+        <!-- Configure -->
+        <div id="configure" class="configure">
+            <form id="configureForm">
+                <h3 class="configure-type" style="margin-top:0">Catalog & Metadata</h3>
+                <div class="config-item">
+                    <label>kisskh | Multiple languages</label>
+                    <input type="checkbox" id="catalog:KISSKH" checked />
                 </div>
+                <div class="config-item">
+                    <label>idrama | Khmer</label>
+                    <input type="checkbox" id="catalog:IDRAMA" />
+                </div>
+                <h3 class="configure-type">Stream and subtitles</h3>
+                <div class="config-item">
+                    <label>kisskh | Multiple languages</label>
+                    <input type="checkbox" id="stream:KISSKH" checked />
+                </div>
+                <div class="config-item">
+                    <label>idrama | Khmer</label>
+                    <input type="checkbox" id="stream:IDRAMA" />
+                </div>
+            </form>
+        </div>
+        <!-- Install -->
+        <div id="install">
+            <div class="install-options">
+                <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
+                    class="btn btn-primary">Install in
+                    App <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                        <path d="m21 3-9 9" />
+                        <path d="M15 3h6v6" />
+                    </svg></a>
+                <a data-umami-event="installWeb" id="installWeb" target="_blank" rel="noopener noreferrer"
+                    class="btn btn-secondary">Install for
+                    Web <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                        <path d="m21 3-9 9" />
+                        <path d="M15 3h6v6" />
+                    </svg></a>
             </div>
-            <h2>Manual Installation</h2>
-            <p>If the buttons don't work, use this</p>
-            <div style="margin-top: 1rem;border: 2px solid var(--foreground); border-radius: .625rem; padding: .5rem;">
-                <code id="manifestUrl"></code>
+            <div class="manifest-container">
+                <code class="manifest-url" id="manifestUrl"></code>
                 <button data-umami-event="copyManifestUrl" onclick="copyUrl()" class="copy-btn">Copy</button>
             </div>
-            <div style="height: 1rem;"></div>
-            <!-- Ko-fi -->
+        </div>
+        <!-- Ko-fi -->
+        <div style="margin-top: 1rem;">
             <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
             <script
                 type='text/javascript'>kofiwidget2.init('Support me on Ko-fi :>', '#72a4f2', 'U7U01U3J0Z'); kofiwidget2.draw();</script>
-
+        </div>
+        <!-- Footer -->
+        <footer style="margin-top: 1rem"">
             <!-- Links -->
-            <div style="margin-top: 1rem;">
-                <h3>Links</h3>
-                <div style="display: flex; justify-content: center; gap: 2rem; margin-top: .5rem;">
-                    <div style="display: flex; flex-direction: row;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://github.com/hoangtamthai/yastream">Github
-                            <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round"
-                                class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                                <path d="m21 3-9 9" />
-                                <path d="M15 3h6v6" />
-                            </svg></a>
-                    </div>
-                    <div style="display: flex;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://uptime-fs.tamthai.de/status/yastream">Status
-                            <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round"
-                                class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                                <path d="m21 3-9 9" />
-                                <path d="M15 3h6v6" />
-                            </svg></a>
-                    </div>
-                    <div style="display: flex;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
-                            <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round"
-                                class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                                <path d="m21 3-9 9" />
-                                <path d="M15 3h6v6" />
-                            </svg></a>
-                    </div>
+            <div id=" links">
+            <div style="display: flex; justify-content: center; gap: 2rem;">
+                <div style="display: flex; flex-direction: row;">
+                    <a target="_blank" rel="noopener noreferrer" href="https://stremio-addons.net/addons/yastream">Star
+                        this
+                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                            <path d="m21 3-9 9" />
+                            <path d="M15 3h6v6" />
+                        </svg></a>
                 </div>
-            </div>
-            <!-- Footer -->
-            <p style="margin-top: 1rem; ">2026. By <a href="https://www.tamthai.de">Tam Thai</a></p>
-            <!-- Changelog -->
-            <div id="changelogModal" class="modal">
-                <div class="modal-content">
-                    <div style="display: flex;justify-content: space-between;">
-                        <span style="width: 2rem;"></span>
-                        <h2 style="text-align: center;">Changelog</h2>
-                        <span class="close-modal">&times;</span>
-                    </div>
-                    <div class="changelog">
-                        {{CHANGELOG}}
-                    </div>
+                <div style="display: flex; flex-direction: row;">
+                    <a target="_blank" rel="noopener noreferrer" href="https://github.com/hoangtamthai/yastream">GitHub
+                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                            <path d="m21 3-9 9" />
+                            <path d="M15 3h6v6" />
+                        </svg></a>
+                </div>
+                <div style="display: flex;">
+                    <a target="_blank" rel="noopener noreferrer"
+                        href="https://uptime-fs.tamthai.de/status/yastream">Status
+                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                            <path d="m21 3-9 9" />
+                            <path d="M15 3h6v6" />
+                        </svg></a>
+                </div>
+                <div style="display: flex;">
+                    <a target="_blank" rel="noopener noreferrer"
+                        href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
+                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
+                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                            <path d="m21 3-9 9" />
+                            <path d="M15 3h6v6" />
+                        </svg></a>
                 </div>
             </div>
     </div>
+    <!-- Year. Name -->
+    <p margin-top: 1rem; ">2026. By <a href=" https://www.tamthai.de">Tam Thai</a></p>
+    </footer>
+    <!-- Changelog -->
+    <div id="changelogModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex;justify-content: space-between;">
+                <span style="width: 2rem;"></span>
+                <h2 style="text-align: center;">Changelog</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="changelog">
+                {{CHANGELOG}}
+            </div>
+        </div>
+    </div>
+    </div>
 
     <script>
-        // Get the manifest URL
-        const manifestUrl = window.location.origin + '/manifest.json';
-        const webLink = `https://web.stremio.com/#/addons?addon=${encodeURIComponent(manifestUrl)}`;
-        const stremioAppLink = manifestUrl.replace('https://', 'stremio://').replace('http://', 'stremio://');
-
-        // Set up install links
-        document.getElementById('installApp').href = stremioAppLink;
-        document.getElementById('installWeb').href = webLink;
-
-        // Display manifest URL
-        document.getElementById('manifestUrl').textContent = manifestUrl;
+        // Install
+        function setInstallUrl(url) {
+            const webLink = `https://web.stremio.com/#/addons?addon=${encodeURIComponent(url)}`;
+            const stremioAppLink = url
+                .replace('https://', 'stremio://')
+                .replace('http://', 'stremio://');
+            // Set up install links
+            document.getElementById('installApp').href = stremioAppLink;
+            document.getElementById('installWeb').href = webLink;
+            document.getElementById('manifestUrl').textContent = url;
+        }
 
         // Copy URL function
         function copyUrl() {
+            const manifestUrl = document.getElementById('manifestUrl').textContent;
             navigator.clipboard.writeText(manifestUrl).then(() => {
                 const btn = document.querySelector('.copy-btn');
                 const originalText = btn.textContent;
@@ -188,6 +227,65 @@
                 modal.style.display = "none";
             }
         }
+
+        // Configure
+        document.getElementById('configureForm').addEventListener('change', function (e) {
+            console.log(e);
+            e.preventDefault();
+            updateManifestUrl();
+        });
+        function updateManifestUrl() {
+            const config = {
+                catalog: [],
+                stream: [],
+            };
+            const checkedBoxes = document.querySelectorAll('#configureForm input[type="checkbox"]:checked');
+            checkedBoxes.forEach(box => {
+                const [type, source] = box.id.split(":");
+                if (config[type]) {
+                    config[type].push(source);
+                }
+            });
+            const configJson = JSON.stringify(config);
+            const configBase64 = btoa(configJson);
+            const manifestUrl = window.location.origin + '/' + configBase64 + '/manifest.json';
+            setInstallUrl(manifestUrl);
+        }
+
+        // Update config redirect from stremio (/config64/configure)
+        document.addEventListener("DOMContentLoaded", () => {
+            setInstallUrl(window.location.origin + '/manifest.json');
+            const path = window.location.pathname;
+            const match = path.match(/\/(.+)\/configure/);
+            console.debug(match)
+            if (match && match[1]) {
+                console.debug(match)
+                try {
+                    const config = JSON.parse(atob(match[1]));
+
+                    // config looks like: { catalog: ["IDRAMA"], stream: ["KISSKH", "IDRAMA"] }
+                    Object.keys(config).forEach(type => {
+                        const activeSources = config[type]; // e.g., ["IDRAMA"]
+
+                        activeSources.forEach(source => {
+                            // Reconstruct the ID (e.g., "catalog:IDRAMA")
+                            const inputId = `${type}:${source}`;
+                            const input = document.getElementById(inputId);
+                            if (input) {
+                                input.checked = true;
+                            }
+                        });
+                    });
+
+                    // After applying saved config, update the install links immediately
+                    updateManifestUrl();
+                } catch (error) {
+                    console.error("Failed to decode configuration:", error);
+                }
+            } else {
+                updateManifestUrl();
+            }
+        });
     </script>
 </body>
 

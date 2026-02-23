@@ -9,7 +9,7 @@ type CacheValue = {
 class GlobalCache {
   private logger = new Logger("CACHE");
   private cache = new Map<string, CacheValue>();
-  private MAX_BYTES = 1000 * 1024 * 1024; // 1GB
+  private MAX_BYTES = 100 * 1024 * 1024; // 100MB
   private currentByteSize = 0;
 
   /**

@@ -10,7 +10,7 @@ interface SearchItem {
 /**
  * Loop through all search terms and find the best fit
  */
-export function filterShow(
+export function matchTitle(
   results: SearchResult[],
   title: string,
   year: number | null,
@@ -45,12 +45,15 @@ export function filterShow(
     normalizedTitle: normalize(originalItem.title),
   }));
   const fuse = new Fuse(searchList, options);
-  const searchTitles = [
-    title,
-    `${title} Season ${season}`,
-    `${title} ${season} Season`,
-    `${title} ${year}`,
-  ];
+  const searchTitles = [title];
+  if (season) {
+    searchTitles.push(
+      ...[`${title} Season ${season}`, `${title} ${season} Season`],
+    );
+  }
+  if (year) {
+    searchTitles.push(`${title} ${year}`);
+  }
   let result: FuseResult<SearchItem> | null = null;
   for (const query of searchTitles) {
     const searchResults = fuse.search(normalize(query));
@@ -63,7 +66,9 @@ export function filterShow(
   }
 
   if (result == null) {
-    throw new Error("No search results found");
+    throw new Error(
+      `FUSE filtered all results | ${title} ${year} Season ${season}`,
+    );
   }
 
   new Logger("FUSE").log(
