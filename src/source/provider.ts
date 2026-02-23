@@ -63,12 +63,13 @@ export abstract class BaseProvider {
   abstract getSubtitles(content: ContentDetail): Promise<Subtitle[]>;
 
   /**
-   * @param pageSize
-   * @param skip
+   * @param pageSize total items get from all urls called
+   * @param skip how much to skip
+   * @param urlNum number of urls that get called
    * @returns page from 1
    */
-  getPage(pageSize: number, skip?: number) {
-    return skip ? Math.ceil(skip / pageSize) + 1 : 1;
+  getPage(pageSize: number, skip?: number, urlNum: number = 1) {
+    return skip ? Math.ceil(skip / Math.ceil(pageSize / urlNum)) + 1 : 1;
   }
 
   formatStreamTitle(

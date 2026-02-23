@@ -23,16 +23,15 @@ export interface SearchResult {
   id: string;
   title: string;
 }
-export interface KisskhCatalogData {
+interface KisskhCatalogData {
   data: KisskhCatalog[];
 }
-export interface KisskhCatalog {
+interface KisskhCatalog {
   episodesCount: number;
   thumbnail: string;
   id: number;
   title: string;
 }
-
 interface KisskhDetail {
   id: string;
   thumbnail: string;
@@ -43,13 +42,11 @@ interface KisskhDetail {
   releaseDate: string;
   episodes: Episode[];
 }
-
 interface Episode {
   id: number;
   number: number;
   sub: number;
 }
-
 interface StreamResponse {
   Video: string;
   [key: string]: any;
@@ -61,6 +58,11 @@ interface SubResponse {
   default: boolean;
 }
 
+enum KisskhCountry {
+  CHINESE = "1",
+  KOREAN = "2",
+}
+
 class KissKHScraperr extends BaseProvider {
   readonly baseUrl: string = "https://kisskh.co";
   readonly supportedPrefix: Prefix[] = [
@@ -69,15 +71,17 @@ class KissKHScraperr extends BaseProvider {
     Prefix.TVDB,
     Prefix.KISSKH,
   ];
-  private pageSize = 10;
-  private subGuid: string = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
-  private viGuid: string = "62f176f3bb1b5b8e70e39932ad34a0c7";
-  private searchUrl: string = this.baseUrl + "/api/DramaList/Search?q=";
-  private detailUrl: string = this.baseUrl + "/api/DramaList/Drama/";
-  private episodeUrl: string =
+  private readonly pageSize = 20;
+  private readonly subGuid: string = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
+  private readonly viGuid: string = "62f176f3bb1b5b8e70e39932ad34a0c7";
+  private readonly searchUrl: string =
+    this.baseUrl + "/api/DramaList/Search?q=";
+  private readonly exploreUrl: string = this.baseUrl + "/api/DramaList/List";
+  private readonly detailUrl: string = this.baseUrl + "/api/DramaList/Drama/";
+  private readonly episodeUrl: string =
     this.baseUrl + "/api/DramaList/Episode/{id}.png?kkey=";
-  private subUrl: string = this.baseUrl + "/api/Sub/{id}?kkey=";
-  private TYPE: Record<ContentType, string> = {
+  private readonly subUrl: string = this.baseUrl + "/api/Sub/{id}?kkey=";
+  private readonly TYPE: Record<ContentType, string> = {
     series: "1",
     movie: "2",
     channel: "1",
@@ -94,45 +98,78 @@ class KissKHScraperr extends BaseProvider {
     return [];
   }
 
+  /**
+   * Search Last update of ongoing and complete
+   * @param id
+   * @param type
+   * @param skip
+   * @returns
+   */
   async getCatalog(
     id: string,
     type: ContentType,
     skip?: number,
   ): Promise<MetaPreview[]> {
-    let url = this.baseUrl;
-    const page = this.getPage(this.pageSize, skip);
+    let urls = [];
+    let urlNum = 2;
+    const page = this.getPage(this.pageSize, urlNum, skip);
     const t = this.TYPE[type];
+    const ongoing = 1;
+    const completed = 2;
     switch (id) {
-      // case KisskhCatalog.MOVIE_NEW:
-      // case KisskhCatalog.SERIES_NEW:
-      //   url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=0&status=0&order=2`;
-      //   break;
       // case KisskhCatalog.MOVIE_KOREAN:
       case KisskhCatalog.SERIES_KOREAN:
-        url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=2&status=0&order=2`;
+        urls.push(
+          this.exploreUrl +
+            `?page=${page}&type=${t}&sub=0&country=${KisskhCountry.KOREAN}&status=${ongoing}&order=2`,
+        );
+        urls.push(
+          this.exploreUrl +
+            `?page=${page}&type=${t}&sub=0&country=${KisskhCountry.KOREAN}&status=${completed}&order=2`,
+        );
         break;
       // case KisskhCatalog.MOVIE_CHINESE:
       case KisskhCatalog.SERIES_CHINESE:
-        url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=1&status=0&order=2`;
+        urls.push(
+          this.exploreUrl +
+            `?page=${page}&type=${t}&sub=0&country=${KisskhCountry.CHINESE}&status=${ongoing}&order=2`,
+        );
+        urls.push(
+          this.exploreUrl +
+            `?page=${page}&type=${t}&sub=0&country=${KisskhCountry.CHINESE}&status=${completed}&order=2`,
+        );
         break;
       default:
-        url += `/api/DramaList/List?page=${page}&type=${t}&sub=0&country=0&status=0&order=2`;
+        urls.push(
+          this.exploreUrl +
+            `?page=${page}&type=${t}&sub=0&country=${KisskhCountry.CHINESE}&status=${ongoing}&order=2`,
+        );
+        urls.push(
+          this.exploreUrl +
+            `?page=${page}&type=${t}&sub=0&country=${KisskhCountry.CHINESE}&status=${completed}&order=2`,
+        );
         break;
     }
-    const response = await axios.get(url);
-    const data: KisskhCatalogData = response.data;
-    const metas = data.data.map((kisskhMeta) => {
-      const meta: MetaPreview = {
-        id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
-        name: kisskhMeta.title,
-        type: type,
-        background: kisskhMeta.thumbnail,
-        poster: kisskhMeta.thumbnail,
-        posterShape: "landscape",
-      };
-      return meta;
+    const promises = urls.map(async (url) => {
+      return axios.get(url);
     });
-    return metas;
+    const responses = await Promise.all(promises);
+    const metas = responses.map((response) => {
+      const data: KisskhCatalogData = response.data;
+      const metas = data.data.map((kisskhMeta) => {
+        const meta: MetaPreview = {
+          id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
+          name: kisskhMeta.title,
+          type: type,
+          background: kisskhMeta.thumbnail,
+          poster: kisskhMeta.thumbnail,
+          posterShape: "landscape",
+        };
+        return meta;
+      });
+      return metas;
+    });
+    return metas.flat();
   }
 
   async getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {

@@ -50,7 +50,6 @@ export class IDramaScraper extends BaseProvider {
   baseUrl = "https://www.idramahd.com";
   supportedPrefix: Prefix[] = [Prefix.IDRAMA];
   pageSize = 30;
-  // BLOG IDs from a Python source
   public readonly BLOG_IDS = {
     TVSABAY: "8016412028548971199",
     ONELEGEND: "596013908374331296",
@@ -61,7 +60,6 @@ export class IDramaScraper extends BaseProvider {
     type: ContentType,
     search: string,
   ): Promise<MetaPreview[]> {
-    if (!id.startsWith(Prefix.IDRAMA)) return [];
     this.logger.log(`Search ${search}`);
     const url = `${this.baseUrl}/?s=${search}`;
     const searchKey = `search:${url}`;

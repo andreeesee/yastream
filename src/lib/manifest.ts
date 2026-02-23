@@ -1,9 +1,9 @@
 // Docs: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md
 import { ContentType, Manifest, ManifestCatalog } from "stremio-addon-sdk";
 import pkg from "../../package.json" with { type: "json" };
-import { getHost, getOrgin } from "../utils/domain.js";
-import { defaultConfig } from "./addon.js";
 import { Provider } from "../source/provider.js";
+import { getOrgin } from "../utils/domain.js";
+import { defaultConfig } from "./addon.js";
 
 export interface UserConfig {
   catalog: Provider[];
@@ -46,6 +46,10 @@ const kisskhCatalogs = Object.entries(KisskhCatalog).map(([key, value]) => {
     id: value,
     type: type as ContentType,
     name: `[${pkg.name}] ${prefix} ${name}`,
+    extra: [
+      { name: "skip", isRequired: false },
+      // { name: "search", isRequired: false },
+    ],
   };
   return manifestCatalog;
 });
