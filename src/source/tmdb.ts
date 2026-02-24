@@ -18,6 +18,7 @@ export interface TmdbTvResult {
   original_name: string;
   overview: string;
   first_air_date: string;
+  poster_path: string;
 }
 
 export interface TmdbMovieResult {
@@ -26,11 +27,13 @@ export interface TmdbMovieResult {
   original_title: string;
   overview: string;
   release_date: string;
+  poster_path: string;
 }
 
 class TMDBService extends BaseMeta {
   private apiKey: string = envGetRequired("TMDB_API_KEY");
   private baseUrl: string = "https://api.themoviedb.org/3";
+  private imageUrl: string = "https://image.tmdb.org";
 
   async findDetailImdb(
     imdbId: string,
@@ -120,6 +123,7 @@ class TMDBService extends BaseMeta {
 
       if (movie) {
         const year = new Date(movie.release_date).getFullYear();
+        const thumbnail = `${this.imageUrl}/t/p/w500${movie.poster_path}`;
         this.logger.log(`Get | ${movie.title} ${year}`);
         return {
           id: movie.id.toString(),
@@ -144,6 +148,7 @@ class TMDBService extends BaseMeta {
       const series: TmdbTvResult = await this._getRequest("/tv/" + id);
       if (series) {
         const year = new Date(series.first_air_date).getFullYear();
+        const thumbnail = `${this.imageUrl}/t/p/w500${series.poster_path}`;
         this.logger.log(`Get | ${series.name} ${year}`);
         return {
           id: series.id.toString(),
@@ -152,6 +157,7 @@ class TMDBService extends BaseMeta {
           year: year,
           type: "series",
           tmdbId: series.id,
+          thumbnail: thumbnail,
         };
       }
 
@@ -176,7 +182,7 @@ class TMDBService extends BaseMeta {
         "Content-Type": "application/json",
       },
     };
-    this.logger.log(`${url}?${queryParams}`);
+    this.logger.log(`GET | ${url}?${queryParams}`);
     const response = await axios.get(`${url}?${queryParams}`, config);
     return response.data;
   }

@@ -116,7 +116,7 @@ class KissKHScraperr extends BaseProvider {
         type: type,
         background: detail.thumbnail,
         poster: detail.thumbnail,
-        posterShape: "landscape",
+        posterShape: "regular",
       };
       return meta;
     });
@@ -137,7 +137,7 @@ class KissKHScraperr extends BaseProvider {
   ): Promise<MetaPreview[]> {
     let urls = [];
     let urlNum = 2;
-    const page = this.getPage(this.pageSize, urlNum, skip);
+    const page = this.getPage(this.pageSize, skip, urlNum);
     const t = this.TYPE[type];
     const ongoing = 1;
     const completed = 2;
@@ -176,6 +176,7 @@ class KissKHScraperr extends BaseProvider {
         break;
     }
     const promises = urls.map(async (url) => {
+      this.logger.log(`GET | ${url}`);
       return axios.get(url);
     });
     const responses = await Promise.all(promises);
@@ -188,12 +189,13 @@ class KissKHScraperr extends BaseProvider {
           type: type,
           background: kisskhMeta.thumbnail,
           poster: kisskhMeta.thumbnail,
-          posterShape: "landscape",
+          posterShape: "regular",
         };
         return meta;
       });
       return metas;
     });
+    this.logger.debug(JSON.stringify(metas));
     return metas.flat();
   }
 
@@ -234,7 +236,7 @@ class KissKHScraperr extends BaseProvider {
       name: detail.title,
       poster: detail.thumbnail,
       background: detail.thumbnail,
-      posterShape: "landscape",
+      posterShape: "regular",
       type: type,
       description: detail.description,
       country: detail.country,

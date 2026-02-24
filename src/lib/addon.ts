@@ -13,12 +13,12 @@ import KissKHScraper from "../source/kisskh.js";
 import TMDBService from "../source/tmdb.js";
 
 import { IDramaScraper } from "../source/idrama.js";
+import { ContentDetail } from "../source/meta.js";
 import { BaseProvider, Provider } from "../source/provider.js";
 import TVDBService from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
 import { Logger } from "../utils/logger.js";
 import { buildManifest, Prefix, UserConfig } from "./manifest.js";
-import { ContentDetail } from "../source/meta.js";
 interface BaseArgs {
   type: ContentType;
   id: string;
@@ -44,7 +44,6 @@ const tvdb = new TVDBService(Provider.TVDB);
 const logger = new Logger("ADDON");
 
 async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
-  logger.log(`ID | ${args.id}`);
   switch (true) {
     case args.id.startsWith(Prefix.IMDB): {
       // imdb | tt0000:season:episode
@@ -78,7 +77,7 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
       const contentType = args.type === "series" ? "series" : "movie";
       const contentKey = `content:tmdb:${tmdbId}`;
       const cacheContent = cache.get(contentKey);
-      let content = cacheContent;
+      let content: ContentDetail | null = cacheContent;
       if (!content) {
         content = await tmdb.getDetailTmdb(tmdbId, contentType);
         if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
@@ -102,7 +101,7 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
       const contentType = args.type === "series" ? "series" : "movie";
       const contentKey = `content:tvdb:${tvdbId}`;
       const cacheContent = cache.get(contentKey);
-      let content = cacheContent;
+      let content: ContentDetail | null = cacheContent;
       if (!content) {
         content = await tvdb.getDetailTvdb(tvdbId, contentType);
         if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
@@ -151,8 +150,13 @@ export async function buildCatalogHandler(
   args: Args,
   config: UserConfig = defaultConfig,
 ): Promise<{ metas: MetaPreview[] } & Cache> {
+  // id | kisskh.movie.Korean
+  // id | idrama
   logger.log(`Catalog | ${args.id}`);
   try {
+    const catalogKey = `catalog:${args.id}:${args.type}:${args.extra.skip}:${args.extra.search}`;
+    const cacheCatalog = cache.get(catalogKey);
+    if (cacheCatalog) return cacheCatalog;
     let metas: MetaPreview[] = [];
     const filteredProviders = filterProvider(providers, args.id);
     const selectedProviders = getCatalogProvider(filteredProviders, config);
@@ -162,7 +166,9 @@ export async function buildCatalogHandler(
         : await provider.getCatalog(args.id, args.type, args.extra.skip);
       metas.push(...newMetas);
     }
-    return { metas: metas, cacheMaxAge: 4 * 60 * 60 };
+    const metaPreviews = { metas: metas, cacheMaxAge: 4 * 60 * 60 };
+    cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
+    return metaPreviews;
   } catch (error) {
     logger.error(`Catalog handler error: ${error}`);
     return { metas: [] };
@@ -174,14 +180,22 @@ export async function buildMetaHandler(
   config: UserConfig = defaultConfig,
 ) {
   logger.log(`Meta | ${args.id}`);
+
+  const metaKey = `meta:${args.id}:${args.type}`;
+  const cacheMeta = cache.get(metaKey);
+  if (cacheMeta) return cacheMeta;
+
   const defaultMeta: { meta: MetaDetail } = {
     meta: {
       id: args.id,
       type: args.type,
-      name: "",
+      name: "You should use AIOMetadata for this metadata, I think they are doing a better job than me :> Fix by order AIOMetadata to be higher than this addon",
     },
   };
   try {
+    const content = await getContent(args);
+    if (!content) return defaultMeta;
+
     const [prefix, id] = args.id.split(":");
     if (!id) {
       return defaultMeta;
@@ -189,9 +203,12 @@ export async function buildMetaHandler(
     const filteredProviders = filterProvider(providers, args.id);
     const selectedProviders = getCatalogProvider(filteredProviders, config);
     for (const provider of selectedProviders) {
-      const meta = await provider.getMeta(id, args.type);
-      logger.debug(`Meta ${JSON.stringify(meta)}`);
-      return { meta: meta || defaultMeta.meta };
+      const meta = await provider.getMeta(content.id || id, args.type);
+      if (meta) {
+        const metaDetail = { meta: meta || defaultMeta.meta };
+        cache.set(metaKey, metaDetail, 4 * 60 * 60 * 1000);
+        return metaDetail;
+      }
     }
     return defaultMeta;
   } catch (error) {
@@ -257,9 +274,6 @@ export async function buildSubtitleHandler(
       const subtitleKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
       const cacheSubtitles = cache.get(subtitleKey);
       if (cacheSubtitles) return { subtitles: cacheSubtitles || [] };
-      // const subtitleIdKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
-      // const cacheSubtitlesId = cache.get(subtitleIdKey);
-      // if (cacheSubtitlesId) return { subtitles: cacheSubtitles || [] };
       const providerSubtitles = await provider.getSubtitles(content);
       if (providerSubtitles) {
         subtitles.push(...providerSubtitles);

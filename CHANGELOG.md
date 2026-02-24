@@ -1,6 +1,7 @@
 # v0.2.1 2026-02-24
 
-- Add tvdb search fallback to search with both main title and alt title
+- Add tvdb search fallback to search with both main title and alt title | Thanks kodan2k
+- Change poster shape to regular
 
 # v0.2.0 2026-02-23
 

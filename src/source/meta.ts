@@ -13,6 +13,7 @@ export interface ContentDetail {
   tvdbId?: string | number;
   season?: number;
   episode?: number;
+  thumbnail?: string;
 }
 
 export abstract class BaseMeta {

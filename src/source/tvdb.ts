@@ -156,6 +156,7 @@ class TVDBService extends BaseMeta {
       params: params,
     };
 
+    this.logger.log(`GET | ${this.baseUrl}${endpoint}`);
     const response = await axios.get(`${this.baseUrl}${endpoint}`, config);
     return response.data;
   }

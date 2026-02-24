@@ -146,7 +146,7 @@ function isValidSegmentUrl(url: string) {
 
 function getProbeInfo(url: string): ProbeInfo | null {
   try {
-    const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height,bit_rate -of json -allowed_segment_extensions png,m4s "${url}"`;
+    const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height,bit_rate -of json -allowed_segment_extensions png,m4s,jpg "${url}"`;
     const output = execSync(cmd).toString();
     const data: ProbeInfo = JSON.parse(output);
     const size = (data.streams[0]?.bit_rate! * data.format.duration) / 8;

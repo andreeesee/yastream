@@ -71,7 +71,7 @@ export class IDramaScraper extends BaseProvider {
       type: type,
       name: item.title,
       poster: item.poster,
-      posterShape: "landscape",
+      posterShape: "regular",
     }));
     cache.set(searchKey, catalog);
     return catalog;
@@ -93,7 +93,7 @@ export class IDramaScraper extends BaseProvider {
       type: type,
       name: item.title,
       poster: item.poster,
-      posterShape: "landscape",
+      posterShape: "regular",
     }));
     cache.set(catalogKey, catalog, 4 * 60 * 60 * 1000);
     return catalog;
