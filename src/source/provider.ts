@@ -5,9 +5,9 @@ import {
   Stream,
   Subtitle,
 } from "stremio-addon-sdk";
-import { Logger } from "../utils/logger.js";
-import { getDisplayResolution, StreamInfo } from "../utils/info.js";
 import { Prefix } from "../lib/manifest.js";
+import { getDisplayResolution, StreamInfo } from "../utils/info.js";
+import { Logger } from "../utils/logger.js";
 import { ContentDetail } from "./meta.js";
 
 export enum Provider {
@@ -84,20 +84,22 @@ export abstract class BaseProvider {
       titleWithYear = title.includes(year.toString()) ? title : titleWithYear;
     }
 
+    const displayHours = info?.hours ? `${info.hours} hours` : "";
+    const displayMinutes = info?.minutes ? `${info.minutes} minutes` : "";
+    const displayTime = `${displayHours} ${displayMinutes}`.trim();
+    const displaySize = info?.size ? `${info.size.toFixed(2)} GB | ` : "";
     const displayResolution = info?.resolution
       ? getDisplayResolution(info?.resolution)
       : "";
-    const displaySize = info?.size ? `${info.size.toFixed(2)} GB ` : "";
-    const displayHours = info?.hours ? `${info.hours} hours` : "";
-    const displayMinutes = info?.minutes ? `${info.minutes} minutes` : "";
-    const displayTime = `${displayHours} ${displayMinutes}`;
+    const displaySizeResolution = `${displaySize}${displayResolution}`.trim();
 
     const formatTitle = season
       ? `${title} S${season.toString().padStart(2, "0")}E${episode?.toString().padStart(2, "0")}`
       : titleWithYear;
-    const titleInfo = info
-      ? `${formatTitle}\n${displayTime.trim()}\n${displaySize}${displayResolution.trim()}`
-      : formatTitle;
+    const fullTitle = [formatTitle, displayTime, displaySizeResolution]
+      .filter((item) => item.trim().length > 0)
+      .join("\n");
+    const titleInfo = info ? fullTitle : formatTitle;
     return titleInfo;
   }
 }

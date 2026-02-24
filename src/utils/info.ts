@@ -41,16 +41,15 @@ export async function parseStreamInfo(url: string): Promise<StreamInfo> {
 }
 
 async function parseMp4(url: string): Promise<StreamInfo> {
-  const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height -of json "${url}"`;
-  const output = execSync(cmd).toString();
-  const data: ProbeInfo = JSON.parse(output);
+  const data = await getProbeInfo(url);
+  if (!data) return { size: 0 };
   const hours = getHours(data.format.duration);
   const minutes = getMinutes(data.format.duration);
   const resolution: Resolution = {
     width: data.streams[0]?.width!,
     height: data.streams[0]?.height!,
   };
-  let GB = data.format.size / (1024 * 1024 * 1024);
+  let GB = data.format.size;
   return {
     size: GB,
     hours: hours,
@@ -73,8 +72,7 @@ async function parseM3u8(url: string): Promise<StreamInfo> {
 
   let totalDuration = 0;
   let totalSizeInBytes = 0;
-  let firstSegmentUrl: string;
-  let firstDuration: number;
+  let firstSegmentUrl: string | undefined;
   lines.forEach((line: string) => {
     // Get Duration
     let currentDuration;
@@ -84,7 +82,6 @@ async function parseM3u8(url: string): Promise<StreamInfo> {
     }
 
     if (!firstSegmentUrl && !line.startsWith("#")) {
-      firstDuration = currentDuration!;
       if (line.startsWith("http")) {
         firstSegmentUrl = line;
       } else if (line.startsWith("//")) {
@@ -103,110 +100,65 @@ async function parseM3u8(url: string): Promise<StreamInfo> {
   let gb = totalSizeInBytes / (1024 * 1024 * 1024);
   const hours = getHours(totalDuration);
   const minutes = getMinutes(totalDuration);
-  logger.debug(`First segment ${firstSegmentUrl!}`);
-  const segmentUrl = new URL(firstSegmentUrl!);
   let probeResult;
-  if (!segmentUrl.pathname.endsWith("ts")) {
-    probeResult = await getProbeInfoFromUrl(firstSegmentUrl!);
+  logger.debug(`First segment ${firstSegmentUrl}`);
+  if (firstSegmentUrl && isValidSegmentUrl(firstSegmentUrl)) {
+    probeResult = await getProbeInfo(firstSegmentUrl);
   } else {
-    probeResult = await getProbeInfoFromUrl(url);
+    probeResult = await getProbeInfo(url);
+  }
+  if (!probeResult) {
+    return {
+      size: gb,
+      hours: hours,
+      minutes: minutes,
+    };
   }
   if (gb === 0) {
-    gb = probeResult?.gb!;
-    // const estimatedTotalSizeMB = await estimateTotalSize(
-    //   totalDuration,
-    //   firstSegmentUrl!,
-    //   firstDuration!,
-    // );
-    // logger.debug(`Estimate size ${estimatedTotalSizeMB}`);
-    // gb = estimatedTotalSizeMB / 1024;
+    gb = probeResult.format.size;
   }
+  const resolution: Resolution = {
+    height: probeResult.streams[0]?.height!,
+    width: probeResult.streams[0]?.width!,
+  };
   logger.log(
-    `| ${hours} hours ${minutes} minutes, ${gb.toFixed(2)} GB, ${probeResult?.resolution.width} x ${probeResult?.resolution.height}`,
+    `${hours} hours ${minutes} minutes, ${gb.toFixed(2)} GB, ${resolution.width} x ${resolution.height}`,
   );
   return {
     size: gb,
     hours: hours,
     minutes: minutes,
-    resolution: probeResult?.resolution!,
+    resolution: resolution,
   };
 }
 
-function getProbeInfoFromUrl(
-  segmentUrl: string,
-): { resolution: Resolution; gb: number } | null {
+function isValidSegmentUrl(url: string) {
+  const segmentUrl = new URL(url);
+  const pathname = segmentUrl.pathname.toLowerCase();
+  switch (true) {
+    case pathname.endsWith("ts"):
+    case pathname.endsWith("png"):
+      return true;
+    default:
+      return false;
+  }
+}
+
+function getProbeInfo(url: string): ProbeInfo | null {
   try {
-    const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height,bit_rate -of json "${segmentUrl}"`;
+    const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height,bit_rate -of json -allowed_segment_extensions png,m4s "${url}"`;
     const output = execSync(cmd).toString();
     const data: ProbeInfo = JSON.parse(output);
     const size = (data.streams[0]?.bit_rate! * data.format.duration) / 8;
-    return {
-      resolution: {
-        width: data.streams[0]?.width!,
-        height: data.streams[0]?.height!,
-      },
-      gb: size / (1024 * 1024 * 1024),
-    };
+    data.format.size = size / (1024 * 1024 * 1024);
+    return data;
   } catch (err) {
     logger.error(
-      `FFprobe failed. Make sure ffmpeg is installed on your system | Url ${segmentUrl}`,
+      `FFprobe failed. Make sure ffmpeg is installed on your system | Url ${url}${err}`,
     );
     return null;
   }
 }
-
-async function estimateTotalSize(
-  totalDurationSeconds: number,
-  firstSegmentUrl: string,
-  firstDuration: number,
-) {
-  // 2. Get the actual size of the first segment via a HEAD request
-  const response = await axios.head(firstSegmentUrl, {
-    timeout: 5000,
-    headers: { "User-Agent": "Mozilla/5.0" }, // Some hosts block empty UAs
-  });
-
-  let segmentSizeBytes = parseInt(response.headers["content-length"] || "0");
-  // if (segmentSizeBytes === 0) {
-  //   segmentSizeBytes = await getRealSize(firstSegmentUrl);
-  // }
-
-  // 3. Get the duration of that specific segment (from your JSON)
-  const segmentDurationSeconds = firstDuration;
-
-  // 4. Calculate the average bitrate of that segment
-  const bitsPerSecond = (segmentSizeBytes * 8) / segmentDurationSeconds;
-
-  // 5. Estimate the full movie size
-  const totalEstimatedBytes = (bitsPerSecond * totalDurationSeconds) / 8;
-  const totalMB = totalEstimatedBytes / (1024 * 1024);
-
-  return totalMB;
-}
-
-// Does Not Work
-// const getRealSize = async (url: string) => {
-//   try {
-//     const response = await axios.get(url, {
-//       headers: {
-//         Range: "bytes=0-5", // Just ask for the first 2 bytes
-//         "User-Agent": "Mozilla/5.0...",
-//       },
-//     });
-
-//     // Content-Range looks like: "bytes 0-1/1548290"
-//     const contentRange = response.headers["content-range"];
-//     if (contentRange) {
-//       const totalSize = contentRange.split("/")[1];
-//       return parseInt(totalSize);
-//     }
-
-//     // Fallback: If no Range support, check if they sent content-length on GET
-//     return parseInt(response.headers["content-length"] || "0");
-//   } catch (e) {
-//     return 0;
-//   }
-// };
 
 export function getDisplayResolution(resolution: Resolution) {
   const width = resolution.width;

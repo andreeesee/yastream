@@ -261,32 +261,12 @@ class KissKHScraperr extends BaseProvider {
       const url = this._fixUrl(stream.Video!);
       let info;
       try {
-        info = await parseStreamInfo(url);
+        info = parseStreamInfo(url);
       } catch (error) {
         this.logger.error(`Fail to parse stream info | ${error}`);
       }
-      const formatTitle = this.formatStreamTitle(
-        searchResult.title,
-        year,
-        season,
-        episode,
-        info,
-      );
-      const streams: Stream[] = [
-        {
-          url: url,
-          name: "yastream",
-          title: formatTitle,
-          behaviorHints: {
-            notWebReady: true,
-            group: `yastream-kisskh`,
-          },
-        },
-      ];
 
-      const streamIdKey = `streams:kisskh:${episodeId}`;
       const subtitlesIdKey = `subtitles:kisskh:${episodeId}`;
-
       // Handle subtitles
       let subtitles = cache.get(subtitleKey);
       if (subtitles) {
@@ -303,6 +283,25 @@ class KissKHScraperr extends BaseProvider {
         }
       }
 
+      const formatTitle = this.formatStreamTitle(
+        searchResult.title,
+        year,
+        season,
+        episode,
+        await info,
+      );
+      const streams: Stream[] = [
+        {
+          url: url,
+          name: "yastream",
+          title: formatTitle,
+          behaviorHints: {
+            notWebReady: true,
+            group: `yastream-kisskh`,
+          },
+        },
+      ];
+      const streamIdKey = `streams:kisskh:${episodeId}`;
       cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
       cache.set(streamIdKey, streams, 4 * 60 * 60 * 1000);
       return streams;
@@ -372,7 +371,7 @@ class KissKHScraperr extends BaseProvider {
     const showList = showData as SearchResult[];
     const show = matchTitle(showList, title, year, season);
     const result: SearchResult = { id: show.id, title: show.title };
-    this.logger.log(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
+    this.logger.debug(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
     return result;
   }
 
@@ -408,7 +407,7 @@ class KissKHScraperr extends BaseProvider {
     if (!episodeId) {
       throw new Error("Episode ID not found");
     }
-    this.logger.log(`EpisodeId | ${episodeId}`);
+    this.logger.debug(`EpisodeId | ${episodeId}`);
     return episodeId.toString();
   }
 
