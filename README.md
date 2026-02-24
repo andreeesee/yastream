@@ -40,6 +40,17 @@ services:
     restart: unless-stopped
 ```
 
+Or with docker run:
+
+```sh
+docker run -d \
+  --name yastream \
+  -p 55913:55913 \
+  --env-file .env \
+  --restart unless-stopped \
+  tamthai/yastream:latest
+```
+
 The .env file require only two key TMDB and TVDB.
 The other value are optional with the default value written after | e.g. default PORT is 55913.
 

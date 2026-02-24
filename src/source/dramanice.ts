@@ -20,6 +20,7 @@ export class DramaniceScraper extends BaseProvider {
     season?: number,
     episode?: number,
     id?: string,
+    altTitle?: string,
   ): Promise<Stream[] | null> {
     throw new Error("Method not implemented.");
   }

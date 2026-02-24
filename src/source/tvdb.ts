@@ -15,13 +15,21 @@ interface TvdbMovieResult {
         name: string;
       },
     ];
-    firstAired: string;
     image: string;
     year: string;
-    overview: string;
   };
 }
 
+interface TvdbSeriesTranslationResult {
+  data: {
+    id: number;
+    name: string; // altTitle
+    year: string;
+    lang: string;
+    alias: string[];
+    overview: string;
+  };
+}
 interface TvdbSeriesResult {
   data: {
     id: number;
@@ -55,9 +63,7 @@ class TVDBService extends BaseMeta {
 
   async getMovieDetail(tvdbId: string): Promise<ContentDetail | null> {
     try {
-      const movie: TvdbMovieResult = await this._getRequest(
-        "/movies/" + tvdbId,
-      );
+      const movie: TvdbMovieResult = await this._getMovie(tvdbId);
 
       if (movie) {
         const year = parseInt(movie.data.year);
@@ -69,10 +75,10 @@ class TVDBService extends BaseMeta {
         this.logger.log(`Get | ${engTitle} ${year}`);
         return {
           title: engTitle,
-          overview: movie.data.overview,
           year: year,
           type: "movie",
           tvdbId: movie.data.id,
+          id: movie.data.id.toString(),
         };
       }
 
@@ -85,7 +91,10 @@ class TVDBService extends BaseMeta {
 
   async getSeriesDetail(id: string): Promise<ContentDetail | null> {
     try {
-      const series: TvdbSeriesResult = await this._getRequest("/series/" + id);
+      const seriesPromise = this._getSeries(id);
+      const seriesEngPromise = this._getSeriesTranslation(id);
+      const seriesAll = await Promise.all([seriesPromise, seriesEngPromise]);
+      const series = seriesAll[0];
       if (series) {
         const year = series.data.year;
         const isoLanguage = iso639FromCountryCode(CountryCode.en);
@@ -93,13 +102,17 @@ class TVDBService extends BaseMeta {
           series.data.aliases.filter((alias) => {
             return alias.language === isoLanguage;
           })?.[0]?.name || series.data.name;
+        const altTitle = seriesAll[1].data.name;
         this.logger.log(`Get | ${engTitle} ${year}`);
+        this.logger.log(`Get alternative title | ${altTitle} ${year}`);
         return {
           title: engTitle,
+          altTitle: altTitle,
           overview: series.data.overview,
           year: parseInt(year),
           type: "series",
           tmdbId: series.data.id,
+          id: series.data.id.toString(),
         };
       }
 
@@ -108,6 +121,24 @@ class TVDBService extends BaseMeta {
       this.logger.error(`Get series details error | ${error.message}`);
       return null;
     }
+  }
+
+  private async _getMovie(id: string): Promise<TvdbMovieResult> {
+    const data: TvdbMovieResult = await this._getRequest("/movies/" + id);
+    return data;
+  }
+  private async _getSeries(id: string): Promise<TvdbSeriesResult> {
+    const data: TvdbSeriesResult = await this._getRequest("/series/" + id);
+    return data;
+  }
+
+  private async _getSeriesTranslation(
+    id: string,
+  ): Promise<TvdbSeriesTranslationResult> {
+    const data: TvdbSeriesTranslationResult = await this._getRequest(
+      `/series/${id}/translations/eng`,
+    );
+    return data;
   }
 
   private async _getRequest(

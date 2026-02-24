@@ -68,6 +68,7 @@ class TMDBService extends BaseMeta {
         const year = new Date(movie.release_date).getFullYear();
         this.logger.log(`Found | ${movie.title} ${year}`);
         return {
+          id: imdbId,
           title: movie.title,
           overview: movie.overview,
           year: year,
@@ -97,6 +98,7 @@ class TMDBService extends BaseMeta {
         const year = new Date(series.first_air_date).getFullYear();
         this.logger.log(`Found | ${series.name} ${year}`);
         return {
+          id: imdbId,
           title: series.name,
           overview: series.overview,
           year: year,
@@ -120,6 +122,7 @@ class TMDBService extends BaseMeta {
         const year = new Date(movie.release_date).getFullYear();
         this.logger.log(`Get | ${movie.title} ${year}`);
         return {
+          id: movie.id.toString(),
           title: movie.title,
           overview: movie.overview,
           year: year,
@@ -143,6 +146,7 @@ class TMDBService extends BaseMeta {
         const year = new Date(series.first_air_date).getFullYear();
         this.logger.log(`Get | ${series.name} ${year}`);
         return {
+          id: series.id.toString(),
           title: series.name,
           overview: series.overview,
           year: year,

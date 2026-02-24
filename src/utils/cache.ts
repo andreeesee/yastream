@@ -3,7 +3,7 @@ import { Logger } from "./logger.js";
 type CacheValue = {
   value: any;
   size: number;
-  timeout: NodeJS.Timeout;
+  expiresAt: number;
 };
 
 class GlobalCache {
@@ -33,18 +33,23 @@ class GlobalCache {
       this.logger.log(`Memory Limit. Evicting oldest | ${oldestKey}`);
       this.delete(oldestKey);
     }
+    const expiresAt = Date.now() + ttlMs;
 
     // 4. Set the new item
-    const timeout = setTimeout(() => this.delete(key), ttlMs);
     this.logger.log(`Set ${ttlMs}ms | ${key}`);
-    this.cache.set(key, { value, size: newSize, timeout });
+    this.cache.set(key, { value, size: newSize, expiresAt });
     this.currentByteSize += newSize;
   }
 
   get(key: string): any | null {
     const entry = this.cache.get(key);
     if (!entry) {
-      this.logger.log(`Miss | ${key}`);
+      this.logger.debug(`Miss | ${key}`);
+      return null;
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.logger.log(`Expired | ${key}`);
+      this.delete(key);
       return null;
     }
     return entry.value;
@@ -57,7 +62,6 @@ class GlobalCache {
   delete(key: string): void {
     const entry = this.cache.get(key);
     if (entry) {
-      clearTimeout(entry.timeout);
       this.currentByteSize -= entry.size;
       this.cache.delete(key);
     }
@@ -74,9 +78,6 @@ class GlobalCache {
   }
 
   clearAll() {
-    for (const [key, entry] of this.cache.entries()) {
-      clearTimeout(entry.timeout);
-    }
     this.cache.clear();
     this.currentByteSize = 0;
   }

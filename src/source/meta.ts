@@ -5,6 +5,7 @@ import { Provider } from "./provider.js";
 export interface ContentDetail {
   id?: string;
   title: string;
+  altTitle?: string;
   overview?: string;
   year: number;
   type: ContentType;

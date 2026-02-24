@@ -1,5 +1,4 @@
 import axios from "axios";
-import { Buffer } from "buffer";
 import * as cheerio from "cheerio";
 import {
   ContentType,
@@ -22,7 +21,10 @@ import { BaseProvider } from "./provider.js";
 export interface SearchResult {
   id: string;
   title: string;
+  episodesCount: number;
+  thumbnail: string;
 }
+
 interface KisskhCatalogData {
   data: KisskhCatalog[];
 }
@@ -94,8 +96,31 @@ class KissKHScraperr extends BaseProvider {
     type: ContentType,
     search: string,
   ): Promise<MetaPreview[]> {
-    const searchResult = await this.searchContent(search, type);
-    return [];
+    this.logger.log(`Search | ${search}`);
+    const searchResults = await this.searchContent(
+      search,
+      type,
+      undefined,
+      undefined,
+      false,
+    );
+    if (!searchResults[0]) return [];
+    const filterResults = searchResults.filter((result) => {
+      if (type == "series") return result.episodesCount > 1;
+      else return result.episodesCount == 1;
+    });
+    const metas = filterResults.map((detail) => {
+      const meta: MetaPreview = {
+        id: `${Prefix.KISSKH}:${detail.id}`,
+        name: detail.title,
+        type: type,
+        background: detail.thumbnail,
+        poster: detail.thumbnail,
+        posterShape: "landscape",
+      };
+      return meta;
+    });
+    return metas;
   }
 
   /**
@@ -184,7 +209,7 @@ class KissKHScraperr extends BaseProvider {
           released: date,
           title: detail.title,
           type: type,
-          description: detail.title, // no description
+          description: detail.description,
           thumbnail: detail.thumbnail,
           background: detail.thumbnail,
           season: season,
@@ -192,13 +217,15 @@ class KissKHScraperr extends BaseProvider {
         };
       } else {
         return {
-          id: `${episode.id.toString()}:${season}:${episodeNum}`,
+          id: `kisskh:${detail.id.toString()}:${season}:${episodeNum}`,
           released: date,
           title: detail.title,
           type: type,
-          description: detail.title, // no description
+          description: detail.description,
           thumbnail: detail.thumbnail,
           background: detail.thumbnail,
+          season: season,
+          episode: index + 1,
         };
       }
     });
@@ -224,86 +251,41 @@ class KissKHScraperr extends BaseProvider {
     season?: number,
     episode?: number,
     id?: string,
+    altTitle?: string,
   ): Promise<Stream[] | null> {
     try {
       if (id) {
-        const streamKey = `streams:kisskh:${id}`;
+        const streamKey = `streams:kisskh:${type}:${id}:${season}:${episode}`;
         const cacheStreams = cache.get(streamKey);
         if (cacheStreams) return cacheStreams;
       }
-      const streamKey = `streams:kisskh:${title}:${type}:${year}:${season}:${episode}`;
-      const subtitleKey = `subtitles:kisskh:${title}:${type}:${year}:${season}:${episode}`;
+      const streamKey = `streams:kisskh:${type}:${id}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams !== null) {
         return cacheStreams;
       }
 
-      const searchResult = await this.searchContent(title, type, year, season);
-      if (!searchResult) {
+      const searchResult = await this.searchContent(
+        title,
+        type,
+        year,
+        season,
+        true,
+        altTitle,
+      );
+      if (!searchResult[0]) {
         this.logger.log("No results");
         return null;
       }
-      let episodeId = null;
-      switch (type) {
-        case "series":
-          if (!episode) {
-            this.logger.log("Episode number required for series");
-            return null;
-          }
-          episodeId = await this._getEpisode(searchResult.id, episode);
-          break;
-        default:
-          episodeId = await this._getEpisode(searchResult.id, 1);
-          break;
-      }
-      const token = await this._getToken(episodeId, this.viGuid);
-      const stream = await this._getStream(episodeId, token);
-      const url = this._fixUrl(stream.Video!);
-      let info;
-      try {
-        info = parseStreamInfo(url);
-      } catch (error) {
-        this.logger.error(`Fail to parse stream info | ${error}`);
-      }
-
-      const subtitlesIdKey = `subtitles:kisskh:${episodeId}`;
-      // Handle subtitles
-      let subtitles = cache.get(subtitleKey);
-      if (subtitles) {
-        cache.set(subtitleKey, subtitles);
-        cache.set(subtitlesIdKey, subtitles);
-      } else {
-        subtitles = cache.get(subtitlesIdKey);
-        if (subtitles === null) {
-          subtitles = await this._getSubtitles(episodeId);
-          cache.set(subtitleKey, subtitles);
-          cache.set(subtitlesIdKey, subtitles);
-        } else {
-          cache.set(subtitlesIdKey, subtitles);
-        }
-      }
-
-      const formatTitle = this.formatStreamTitle(
-        searchResult.title,
+      const streams = await this.generateStreamsAndSubtitles(
+        searchResult[0],
+        type,
         year,
         season,
         episode,
-        await info,
+        id,
       );
-      const streams: Stream[] = [
-        {
-          url: url,
-          name: "yastream",
-          title: formatTitle,
-          behaviorHints: {
-            notWebReady: true,
-            group: `yastream-kisskh`,
-          },
-        },
-      ];
-      const streamIdKey = `streams:kisskh:${episodeId}`;
       cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
-      cache.set(streamIdKey, streams, 4 * 60 * 60 * 1000);
       return streams;
     } catch (error: any) {
       this.logger.error(`Error | ${error.message}`);
@@ -318,17 +300,82 @@ class KissKHScraperr extends BaseProvider {
   async searchContent(
     title: string,
     type: ContentType,
-    year: number | null = null,
-    season: number | null = null,
-  ): Promise<SearchResult | null> {
+    year?: number,
+    season?: number,
+    filter: boolean = true,
+    altTitle?: string,
+  ): Promise<SearchResult[]> {
     switch (type) {
       case "series":
       case "movie":
-        const shows = await this._getShows(title, year, season);
+        const shows = await this._getShows(
+          title,
+          year,
+          season,
+          filter,
+          altTitle,
+        );
         return shows;
       default:
-        return null;
+        return [];
     }
+  }
+
+  async generateStreamsAndSubtitles(
+    searchResult: SearchResult,
+    type: ContentType,
+    year?: number,
+    season?: number,
+    episode?: number,
+    id?: string,
+  ) {
+    const episodeId = await this._getEpisode(searchResult.id, type, episode);
+    const token = await this._getToken(episodeId, this.viGuid);
+    const stream = await this._getStream(episodeId, token);
+    const url = this._fixUrl(stream.Video!);
+    let info;
+    try {
+      info = parseStreamInfo(url);
+    } catch (error) {
+      this.logger.error(`Fail to parse stream info | ${error}`);
+    }
+    const subtitleKey = `subtitles:kisskh:${type}:${id}:${season}:${episode}`;
+    // Handle subtitles
+    let subtitles = cache.get(subtitleKey);
+    if (subtitles) cache.set(subtitleKey, subtitles);
+    else {
+      subtitles = await this._getSubtitles(episodeId);
+      cache.set(subtitleKey, subtitles);
+    }
+    // } else {
+    //   subtitles = cache.get(subtitlesIdKey);
+    //   if (subtitles === null) {
+    //     cache.set(subtitleKey, subtitles);
+    //     // cache.set(subtitlesIdKey, subtitles);
+    //   } else {
+    //     // cache.set(subtitlesIdKey, subtitles);
+    //   }
+    // }
+
+    const formatTitle = this.formatStreamTitle(
+      searchResult.title,
+      year,
+      season,
+      episode,
+      await info,
+    );
+    const streams: Stream[] = [
+      {
+        url: url,
+        name: "yastream",
+        title: formatTitle,
+        behaviorHints: {
+          notWebReady: true,
+          group: `yastream-kisskh`,
+        },
+      },
+    ];
+    return streams;
   }
 
   private async _getToken(episodeId: string, uid: string): Promise<string> {
@@ -358,26 +405,28 @@ class KissKHScraperr extends BaseProvider {
 
   private async _getShows(
     title: string,
-    year: number | null = null,
-    season: number | null = null,
-  ): Promise<SearchResult | null> {
+    year?: number,
+    season?: number,
+    isFilter: boolean = true,
+    altTitle?: string,
+  ): Promise<SearchResult[]> {
     const searchResponse = await axios.get(`${this.searchUrl}${title}&type=0`, {
       headers: this.headers,
     });
     const showData = searchResponse.data;
     if (!showData) {
-      return null;
+      return [];
     }
     const showList = showData as SearchResult[];
-    const show = matchTitle(showList, title, year, season);
-    const result: SearchResult = { id: show.id, title: show.title };
-    this.logger.debug(`SeriesId/MovieId | ${JSON.stringify(show.id)}`);
-    return result;
+    const show = isFilter
+      ? matchTitle(showList, title, year, season, altTitle)
+      : showList;
+    if (show)
+      this.logger.debug(`SeriesId/MovieId | ${JSON.stringify(show[0]?.id)}`);
+    return show;
   }
 
   public async getContent(episodeId: string): Promise<Stream[]> {
-    // const token = await this._getToken(episodeId, this.viGuid);
-    // const stream = await this._getStream(episodeId, token);
     const streamKey = `streams:kisskh:${episodeId}`;
     const cacheContent = cache.get(streamKey);
     return cacheContent;
@@ -391,7 +440,21 @@ class KissKHScraperr extends BaseProvider {
     return episodesData;
   }
 
-  private async _getEpisode(seriesId: string, episode: number) {
+  private async _getEpisode(
+    seriesId: string,
+    type: ContentType,
+    episode: number = 1,
+  ) {
+    switch (type) {
+      case "series":
+        if (!episode) {
+          this.logger.error("Episode number required for series");
+          throw new Error(`[KISSKH] Episode number required for series`);
+        }
+        break;
+      default:
+        break;
+    }
     const detail = await this.getDetail(seriesId);
     const episodeCount = detail.episodesCount;
     if (!detail || episodeCount === undefined) {

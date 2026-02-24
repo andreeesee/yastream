@@ -58,6 +58,7 @@ export abstract class BaseProvider {
     season?: number,
     episode?: number,
     id?: string,
+    altTitle?: string,
   ): Promise<Stream[] | null>;
 
   abstract getSubtitles(content: ContentDetail): Promise<Subtitle[]>;

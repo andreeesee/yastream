@@ -18,6 +18,10 @@ export enum Prefix {
   KISSKH = "kisskh",
 }
 const IDRAMA_CATALOG_ID = "idrama";
+export const KisskhSearchCatalog = {
+  SERIES: `${Prefix.KISSKH}.series.Search`,
+  MOVIES: `${Prefix.KISSKH}.movie.Search`,
+};
 export const KisskhCatalog = {
   // SERIES_NEW: `${Prefix.KISSKH}.series.New`,
   SERIES_KOREAN: `${Prefix.KISSKH}.series.Korean`,
@@ -40,19 +44,32 @@ catalogMap.set(Provider.IDRAMA, [
   },
 ]);
 
+const kisskhSearchCatalogs = Object.entries(KisskhSearchCatalog).map(
+  ([key, value]) => {
+    const [prefix, type, name] = value.split(".");
+    const manifestCatalog: ManifestCatalog = {
+      id: value,
+      type: type as ContentType,
+      name: `[${pkg.name}] ${prefix} ${name}`,
+      extra: [
+        { name: "skip", isRequired: false, options: ["0", "50"] },
+        { name: "search", isRequired: true },
+      ],
+    };
+    return manifestCatalog;
+  },
+);
 const kisskhCatalogs = Object.entries(KisskhCatalog).map(([key, value]) => {
   const [prefix, type, name] = value.split(".");
   const manifestCatalog: ManifestCatalog = {
     id: value,
     type: type as ContentType,
     name: `[${pkg.name}] ${prefix} ${name}`,
-    extra: [
-      { name: "skip", isRequired: false },
-      // { name: "search", isRequired: false },
-    ],
+    extra: [{ name: "skip", isRequired: false }],
   };
   return manifestCatalog;
 });
+kisskhCatalogs.push(...kisskhSearchCatalogs);
 catalogMap.set(Provider.KISSKH, kisskhCatalogs);
 
 const defaultManifest: Manifest = {

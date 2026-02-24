@@ -60,7 +60,7 @@ export class IDramaScraper extends BaseProvider {
     type: ContentType,
     search: string,
   ): Promise<MetaPreview[]> {
-    this.logger.log(`Search ${search}`);
+    this.logger.log(`Search | ${search}`);
     const url = `${this.baseUrl}/?s=${search}`;
     const searchKey = `search:${url}`;
     const cacheCatalog: MetaPreview[] = cache.get(searchKey);
@@ -149,6 +149,7 @@ export class IDramaScraper extends BaseProvider {
     season?: number,
     episode?: number,
     id?: string,
+    altTitle?: string,
   ): Promise<Stream[] | null> {
     try {
       if (!id) {

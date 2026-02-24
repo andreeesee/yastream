@@ -222,6 +222,7 @@ export async function buildStreamHandler(
         content.season,
         content.episode,
         content.id,
+        content.altTitle,
       );
       if (providerStreams) {
         streams.push(...providerStreams);
@@ -253,12 +254,12 @@ export async function buildSubtitleHandler(
     const filteredProviders = filterProvider(providers, args.id);
     const selectedProviders = getStreamProvider(filteredProviders, config);
     for (const provider of selectedProviders) {
-      const subtitleKey = `subtitles:${provider.name.toLowerCase()}:${title}:${type}:${year}:${season}:${episode}`;
+      const subtitleKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
       const cacheSubtitles = cache.get(subtitleKey);
       if (cacheSubtitles) return { subtitles: cacheSubtitles || [] };
-      const subtitleIdKey = `subtitles:${provider.name.toLowerCase()}:${content.id}`;
-      const cacheSubtitlesId = cache.get(subtitleIdKey);
-      if (cacheSubtitlesId) return { subtitles: cacheSubtitles || [] };
+      // const subtitleIdKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
+      // const cacheSubtitlesId = cache.get(subtitleIdKey);
+      // if (cacheSubtitlesId) return { subtitles: cacheSubtitles || [] };
       const providerSubtitles = await provider.getSubtitles(content);
       if (providerSubtitles) {
         subtitles.push(...providerSubtitles);

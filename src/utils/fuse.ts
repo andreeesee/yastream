@@ -13,9 +13,10 @@ interface SearchItem {
 export function matchTitle(
   results: SearchResult[],
   title: string,
-  year: number | null,
-  season: number | null,
-): SearchResult {
+  year?: number,
+  season?: number,
+  altTitle?: string,
+): SearchResult[] {
   const options: IFuseOptions<SearchItem> = {
     keys: ["normalizedTitle"],
     includeScore: true,
@@ -45,16 +46,10 @@ export function matchTitle(
     normalizedTitle: normalize(originalItem.title),
   }));
   const fuse = new Fuse(searchList, options);
-  const searchTitles = [title];
-  if (season) {
-    searchTitles.push(
-      ...[`${title} Season ${season}`, `${title} ${season} Season`],
-    );
-  }
-  if (year) {
-    searchTitles.push(`${title} ${year}`);
-  }
   let result: FuseResult<SearchItem> | null = null;
+  const searchTitles = createSearchList(title, season, year);
+  const altTitles = altTitle ? createSearchList(altTitle, season, year) : [];
+  searchTitles.push(...altTitles);
   for (const query of searchTitles) {
     const searchResults = fuse.search(normalize(query));
     if (searchResults.length > 0) {
@@ -74,5 +69,17 @@ export function matchTitle(
   new Logger("FUSE").log(
     `Match | ${result.item.original.title} : ${result.score?.toFixed(3)}`,
   );
-  return result.item.original;
+  return [result.item.original];
+}
+function createSearchList(title: string, season?: number, year?: number) {
+  const searchTitles = [title];
+  if (season) {
+    searchTitles.push(
+      ...[`${title} Season ${season}`, `${title} ${season} Season`],
+    );
+  }
+  if (year) {
+    searchTitles.push(`${title} ${year}`);
+  }
+  return searchTitles;
 }
