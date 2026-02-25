@@ -116,10 +116,11 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
     }
     case args.id.startsWith(Prefix.IDRAMA): {
       // id | idrama:postId:season:episode
-      const [prefix, id, season, episode] = args.id.split(":");
-      const { title, year } = await idrama.getStreamDetail(id!);
+      const [prefix, idramaId, season, episode] = args.id.split(":");
+      if (!idramaId) return null;
+      const { title, year } = await idrama.getStreamDetail(idramaId);
       const content: ContentDetail = {
-        id: id!,
+        id: idramaId,
         title: title,
         year: year,
         type: "series",
@@ -130,10 +131,11 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
     }
     case args.id.startsWith(Prefix.KISSKH): {
       // id | kisskh:episodeId:season:episode
-      const [prefix, id, season, episode] = args.id.split(":");
-      const { title, releaseDate } = await kisskh.getDetail(id!);
+      const [prefix, kisskhId, season, episode] = args.id.split(":");
+      if (!kisskhId) return null;
+      const { title, releaseDate } = await kisskh.getDetail(kisskhId);
       const content: ContentDetail = {
-        id: id!,
+        id: kisskhId,
         title: title,
         year: new Date(releaseDate).getFullYear(),
         type: "series",
@@ -154,7 +156,7 @@ export async function buildCatalogHandler(
   // id | idrama
   logger.log(`Catalog | ${args.id}`);
   try {
-    const catalogKey = `catalog:${args.id}:${args.type}:${args.extra.skip}:${args.extra.search}`;
+    const catalogKey = `catalog:${args.type}:${args.id}:${args.extra.skip}:${args.extra.search}`;
     const cacheCatalog = cache.get(catalogKey);
     if (cacheCatalog) return cacheCatalog;
     let metas: MetaPreview[] = [];
@@ -181,7 +183,7 @@ export async function buildMetaHandler(
 ) {
   logger.log(`Meta | ${args.id}`);
 
-  const metaKey = `meta:${args.id}:${args.type}`;
+  const metaKey = `meta:${args.type}:${args.id}`;
   const cacheMeta = cache.get(metaKey);
   if (cacheMeta) return cacheMeta;
 

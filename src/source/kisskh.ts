@@ -26,9 +26,9 @@ export interface SearchResult {
 }
 
 interface KisskhCatalogData {
-  data: KisskhCatalog[];
+  data: KisskhCatalogItem[];
 }
-interface KisskhCatalog {
+interface KisskhCatalogItem {
   episodesCount: number;
   thumbnail: string;
   id: number;
@@ -180,23 +180,24 @@ class KissKHScraperr extends BaseProvider {
       return axios.get(url);
     });
     const responses = await Promise.all(promises);
-    const metas = responses.map((response) => {
-      const data: KisskhCatalogData = response.data;
-      const metas = data.data.map((kisskhMeta) => {
-        const meta: MetaPreview = {
-          id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
-          name: kisskhMeta.title,
-          type: type,
-          background: kisskhMeta.thumbnail,
-          poster: kisskhMeta.thumbnail,
-          posterShape: "regular",
-        };
-        return meta;
-      });
-      return metas;
-    });
-    this.logger.debug(JSON.stringify(metas));
-    return metas.flat();
+    const metas = responses
+      .map((response) => {
+        const data: KisskhCatalogData = response.data;
+        const metas = data.data.map((kisskhMeta) => {
+          const meta: MetaPreview = {
+            id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
+            name: kisskhMeta.title,
+            type: type,
+            background: kisskhMeta.thumbnail,
+            poster: kisskhMeta.thumbnail,
+            posterShape: "regular",
+          };
+          return meta;
+        });
+        return metas;
+      })
+      .flat();
+    return metas;
   }
 
   async getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
@@ -296,7 +297,22 @@ class KissKHScraperr extends BaseProvider {
   }
 
   async getSubtitles(content: ContentDetail): Promise<Subtitle[]> {
-    return [];
+    const search = await this.searchContent(
+      content.title,
+      content.type,
+      content.year,
+      content.season,
+      true,
+      content.altTitle,
+    );
+    if (!search[0]) return [];
+    const episodeId = await this._getEpisode(
+      search[0]?.id,
+      content.type,
+      content.episode,
+    );
+    const subtitles = this._getSubtitles(episodeId);
+    return subtitles;
   }
 
   async searchContent(
@@ -349,15 +365,6 @@ class KissKHScraperr extends BaseProvider {
       subtitles = await this._getSubtitles(episodeId);
       cache.set(subtitleKey, subtitles);
     }
-    // } else {
-    //   subtitles = cache.get(subtitlesIdKey);
-    //   if (subtitles === null) {
-    //     cache.set(subtitleKey, subtitles);
-    //     // cache.set(subtitlesIdKey, subtitles);
-    //   } else {
-    //     // cache.set(subtitlesIdKey, subtitles);
-    //   }
-    // }
 
     const formatTitle = this.formatStreamTitle(
       searchResult.title,
@@ -412,7 +419,9 @@ class KissKHScraperr extends BaseProvider {
     isFilter: boolean = true,
     altTitle?: string,
   ): Promise<SearchResult[]> {
-    const searchResponse = await axios.get(`${this.searchUrl}${title}&type=0`, {
+    const url = `${this.searchUrl}${title}&type=0`;
+    this.logger.log(`GET getShows | ${url}`);
+    const searchResponse = await axios.get(url, {
       headers: this.headers,
     });
     const showData = searchResponse.data;
@@ -435,7 +444,9 @@ class KissKHScraperr extends BaseProvider {
   }
 
   public async getDetail(kisskhId: string): Promise<KisskhDetail> {
-    const episodeResponse = await axios.get(`${this.detailUrl}${kisskhId}`, {
+    const url = `${this.detailUrl}${kisskhId}`;
+    this.logger.log(`GET getDetail | ${url}`);
+    const episodeResponse = await axios.get(url, {
       headers: this.headers,
     });
     const episodesData: KisskhDetail = episodeResponse.data;
@@ -478,6 +489,7 @@ class KissKHScraperr extends BaseProvider {
 
   private async _getStream(episodeId: string, token: string) {
     const streamUrl = this.episodeUrl.replace("{id}", episodeId) + token;
+    this.logger.log(`GET getStream | ${streamUrl}`);
     const streamResponse = await axios.get(`${streamUrl}`);
     const stream: StreamResponse = streamResponse.data;
     this.logger.log(`Stream Url | ${stream.Video}`);

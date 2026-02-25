@@ -30,11 +30,29 @@ export interface TmdbMovieResult {
   poster_path: string;
 }
 
+interface TmdbMovieSearch {
+  results: TmdbMovieResult[];
+}
+interface TmdbTvSearch {
+  results: TmdbTvResult[];
+}
+
 class TMDBService extends BaseMeta {
   private apiKey: string = envGetRequired("TMDB_API_KEY");
   private baseUrl: string = "https://api.themoviedb.org/3";
   private imageUrl: string = "https://image.tmdb.org";
 
+  async searchDetailImdb(
+    search: string,
+    type: ContentType,
+    year?: number,
+  ): Promise<ContentDetail | null> {
+    if (type === "series") {
+      return await this.searchSeriesDetail(search, year);
+    } else {
+      return await this.searchMovieDetail(search, year);
+    }
+  }
   async findDetailImdb(
     imdbId: string,
     type: ContentType,
@@ -54,6 +72,68 @@ class TMDBService extends BaseMeta {
       return await this.getSeriesDetail(tmdbId);
     } else {
       return await this.getMovieDetail(tmdbId);
+    }
+  }
+
+  async getSearchSeries(title: string, year?: number): Promise<TmdbTvSearch> {
+    return await this._getRequest(`/search/tv?query=${title}&year=${year}`);
+  }
+  async searchSeriesDetail(
+    title: string,
+    year?: number,
+  ): Promise<ContentDetail | null> {
+    try {
+      const response = await this.getSearchSeries(title, year);
+      const tv = response.results[0];
+
+      if (tv) {
+        const year = new Date(tv.first_air_date).getFullYear();
+        this.logger.log(`Found | ${tv.name} ${year}`);
+        return {
+          id: tv.id.toString(),
+          title: tv.name,
+          overview: tv.overview,
+          year: year,
+          type: "movie",
+          tmdbId: tv.id,
+        };
+      }
+
+      return null;
+    } catch (error: any) {
+      this.logger.error(`Movie details error | ${error.message}`);
+      return null;
+    }
+  }
+
+  async getSearchMovie(title: string, year?: number): Promise<TmdbMovieSearch> {
+    return await this._getRequest(`/search/movie?query=${title}&year=${year}`);
+  }
+  async searchMovieDetail(
+    title: string,
+    year?: number,
+  ): Promise<ContentDetail | null> {
+    try {
+      const movieResponse = await this.getSearchMovie(title, year);
+      const movie = movieResponse.results[0];
+
+      if (movie) {
+        const year = new Date(movie.release_date).getFullYear();
+        this.logger.log(`Found | ${movie.title} ${year}`);
+        return {
+          id: movie.id.toString(),
+          title: movie.title,
+          overview: movie.overview,
+          year: year,
+          type: "movie",
+          tmdbId: movie.id,
+        };
+      }
+
+      return null;
+    } catch (error: any) {
+      this.logger.error(`Movie details error | ${error.message}`);
+      return null;
     }
   }
 
