@@ -36,7 +36,7 @@ class GlobalCache {
     const expiresAt = Date.now() + ttlMs;
 
     // 4. Set the new item
-    this.logger.log(`Set ${ttlMs}ms | ${key}`);
+    this.logger.debug(`Set ${ttlMs}ms | ${key}`);
     this.cache.set(key, { value, size: newSize, expiresAt });
     this.currentByteSize += newSize;
   }

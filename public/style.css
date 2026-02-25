@@ -20,6 +20,12 @@ body {
   justify-content: center;
 }
 
+.icon {
+  margin-left: 0.3rem;
+  width: 1rem;
+  height: 1.1rem;
+}
+
 .container {
   background: var(--background);
   border: var(--foreground);
@@ -82,7 +88,7 @@ p {
 }
 
 /* Install */
-.install-options {
+.grid-btn {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.2rem;
@@ -103,20 +109,30 @@ p {
   justify-content: center;
   align-items: center;
 }
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px var(--secondary-background);
+}
+.btn-reddit {
+  background: #ff4500;
+}
+.btn-reddit:hover {
+  background: #cf3700;
+}
+.btn-discord {
+  background: #5865f2;
+}
+.btn-discord:hover {
+  background: #424bb4;
+}
 .btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 .btn-secondary {
   background: #6c757d;
 }
 .btn-secondary:hover {
   background: #5a6268;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
 }
 
 /* Manifest Url */

@@ -191,7 +191,7 @@ export async function buildMetaHandler(
     meta: {
       id: args.id,
       type: args.type,
-      name: "You should use AIOMetadata for this metadata, I think they are doing a better job than me :> Fix by order AIOMetadata to be higher than this addon",
+      name: "You should use AIOMetadata for this metadata, I think they are doing a better job than me. Fix by order AIOMetadata to be higher than this addon",
     },
   };
   try {
@@ -201,6 +201,10 @@ export async function buildMetaHandler(
     const [prefix, id] = args.id.split(":");
     if (!id) {
       return defaultMeta;
+    }
+    const notCustomPrefix = [Prefix.IMDB, Prefix.TMDB, Prefix.TVDB];
+    for (const pref of notCustomPrefix) {
+      if (id.startsWith(pref)) return defaultConfig;
     }
     const filteredProviders = filterProvider(providers, args.id);
     const selectedProviders = getCatalogProvider(filteredProviders, config);

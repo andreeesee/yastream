@@ -146,7 +146,6 @@ class TVDBService extends BaseMeta {
     params: Record<string, any> = {},
   ): Promise<any> {
     const token = await this._authenticate();
-
     const config: AxiosRequestConfig = {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -155,9 +154,9 @@ class TVDBService extends BaseMeta {
       },
       params: params,
     };
-
-    this.logger.log(`GET | ${this.baseUrl}${endpoint}`);
-    const response = await axios.get(`${this.baseUrl}${endpoint}`, config);
+    const url = `${this.baseUrl}${endpoint}`;
+    this.logger.log(`GET | ${url}`);
+    const response = await axios.get(url, config);
     return response.data;
   }
 

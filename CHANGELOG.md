@@ -1,3 +1,8 @@
+# v0.2.2 2026-02-25
+
+- Improve caching mechanism, cache each url
+- Add link to reddit and discord
+
 # v0.2.1 2026-02-24
 
 - Add tvdb search fallback to search with both main title and alt title | Thanks kodan2k

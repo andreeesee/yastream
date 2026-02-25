@@ -252,18 +252,18 @@ class TMDBService extends BaseMeta {
     endpoint: string,
     params: Record<string, any> = {},
   ): Promise<any> {
-    const url = `${this.baseUrl}${endpoint}`;
     const queryParams = new URLSearchParams({
       ...params,
     });
+    const url = `${this.baseUrl}${endpoint}?${queryParams}`;
     const config: AxiosRequestConfig = {
       headers: {
         Authorization: "Bearer " + this.apiKey,
         "Content-Type": "application/json",
       },
     };
-    this.logger.log(`GET | ${url}?${queryParams}`);
-    const response = await axios.get(`${url}?${queryParams}`, config);
+    this.logger.log(`GET | ${url}`);
+    const response = await axios.get(`${url}`, config);
     return response.data;
   }
 }

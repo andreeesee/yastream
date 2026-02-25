@@ -17,6 +17,7 @@ import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getSetDecryptedSubtitle } from "../utils/subtitle.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
+import { axiosGet } from "../utils/axios.js";
 
 export interface SearchResult {
   id: string;
@@ -176,13 +177,13 @@ class KissKHScraperr extends BaseProvider {
         break;
     }
     const promises = urls.map(async (url) => {
-      this.logger.log(`GET | ${url}`);
-      return axios.get(url);
+      this.logger.log(`GET catalog | ${url}`);
+      return axiosGet(url);
     });
-    const responses = await Promise.all(promises);
-    const metas = responses
-      .map((response) => {
-        const data: KisskhCatalogData = response.data;
+    const datas: KisskhCatalogData[] = await Promise.all(promises);
+    const metas = datas
+      .map((data) => {
+        // const data: KisskhCatalogData = data.data;
         const metas = data.data.map((kisskhMeta) => {
           const meta: MetaPreview = {
             id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
@@ -420,20 +421,16 @@ class KissKHScraperr extends BaseProvider {
     altTitle?: string,
   ): Promise<SearchResult[]> {
     const url = `${this.searchUrl}${title}&type=0`;
-    this.logger.log(`GET getShows | ${url}`);
-    const searchResponse = await axios.get(url, {
-      headers: this.headers,
-    });
-    const showData = searchResponse.data;
-    if (!showData) {
+    this.logger.log(`GET search | ${url}`);
+    const searchData = await axiosGet(url);
+    if (!searchData) {
       return [];
     }
-    const showList = showData as SearchResult[];
+    const showList = searchData as SearchResult[];
     const show = isFilter
       ? matchTitle(showList, title, year, season, altTitle)
       : showList;
-    if (show)
-      this.logger.debug(`SeriesId/MovieId | ${JSON.stringify(show[0]?.id)}`);
+    this.logger.debug(`SeriesId/MovieId | ${JSON.stringify(show[0]?.id)}`);
     return show;
   }
 
@@ -445,11 +442,8 @@ class KissKHScraperr extends BaseProvider {
 
   public async getDetail(kisskhId: string): Promise<KisskhDetail> {
     const url = `${this.detailUrl}${kisskhId}`;
-    this.logger.log(`GET getDetail | ${url}`);
-    const episodeResponse = await axios.get(url, {
-      headers: this.headers,
-    });
-    const episodesData: KisskhDetail = episodeResponse.data;
+    this.logger.log(`GET detail | ${url}`);
+    const episodesData = await axiosGet(url, { headers: this.headers });
     return episodesData;
   }
 
@@ -488,10 +482,9 @@ class KissKHScraperr extends BaseProvider {
   }
 
   private async _getStream(episodeId: string, token: string) {
-    const streamUrl = this.episodeUrl.replace("{id}", episodeId) + token;
-    this.logger.log(`GET getStream | ${streamUrl}`);
-    const streamResponse = await axios.get(`${streamUrl}`);
-    const stream: StreamResponse = streamResponse.data;
+    const url = this.episodeUrl.replace("{id}", episodeId) + token;
+    this.logger.log(`GET stream | ${url}`);
+    const stream = await axiosGet(url);
     this.logger.log(`Stream Url | ${stream.Video}`);
     return stream;
   }
@@ -499,9 +492,8 @@ class KissKHScraperr extends BaseProvider {
   private async _getSubtitles(episodeId: string): Promise<Subtitle[]> {
     const token = await this._getToken(episodeId, this.subGuid);
     const subtitleUrl = this.subUrl.replace("{id}", episodeId) + token;
-    this.logger.log(`Subtitles Url | ${subtitleUrl}`);
-    const response = await axios.get(`${subtitleUrl}`);
-    const subtitleDatas: SubResponse[] = response.data;
+    this.logger.log(`GET subtitles | ${subtitleUrl}`);
+    const subtitleDatas: SubResponse[] = await axiosGet(subtitleUrl);
     const subtitles: Subtitle[] = [];
     for (const [index, subtitleData] of subtitleDatas.entries()) {
       const lang = iso639FromCountryCode(subtitleData.land as CountryCode);

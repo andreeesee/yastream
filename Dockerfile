@@ -29,7 +29,7 @@ ENV NODE_ENV=production
 ENV PORT=55913
 
 LABEL maintainer="Tam Thai"
-LABEL description="Stremio addon for streaming Asian content from kisskh"
+LABEL description="Stremio addon to stream asian dramas, series and movie "
 LABEL org.opencontainers.image.source="https://github.com/hoangtamthai/yastream"
 
 CMD ["node", "dist/server.js"]

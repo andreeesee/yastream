@@ -15,7 +15,7 @@
 <body>
     <div class="container">
         <!-- Title -->
-        <div id="title">
+        <header id="title">
             <div style="display: flex; justify-content: center;">
                 <div style="position: relative; width: fit-content;">
                     <div
@@ -29,14 +29,14 @@
             </div>
             <h2>Yet Another Stream</h2>
             <h3 id="versionTag" style="cursor: pointer; text-decoration: underline dotted;">v{{VERSION}}</h3>
-            <p>Stream Asian Drama and Movies directly from <a target="_blank" rel="noopener noreferrer"
+            <p>Stream Asian Dramas, Series and Movies directly from <a target="_blank" rel="noopener noreferrer"
                     href="https://kisskh.co">kisskh</a> and <a target="_blank" rel="noopener noreferrer"
                     href="https://idramahd.com">idrama</a> (Khmer only). Powered by <a target="_blank"
                     rel="noopener noreferrer" href="https://themoviedb.org">TMDB</a> and <a target="_blank"
                     rel="noopener noreferrer" href="https://www.thetvdb.com">TVDB</a> for metadata.</p>
-        </div>
+        </header>
         <!-- Configure -->
-        <div id="configure" class="configure">
+        <section id="configure" class="configure">
             <form id="configureForm">
                 <h3 class="configure-type" style="margin-top:0">Catalog & Metadata</h3>
                 <div class="config-item">
@@ -57,112 +57,103 @@
                     <input type="checkbox" id="stream:IDRAMA" />
                 </div>
             </form>
-        </div>
+        </section>
         <!-- Install -->
         <div id="install">
-            <div class="install-options">
+            <div class="grid-btn">
                 <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
                     class="btn btn-primary">Install in
-                    App <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                        <path d="m21 3-9 9" />
-                        <path d="M15 3h6v6" />
+                    App<svg class="icon">
+                        <use href="/icons.svg#external"></use>
                     </svg></a>
                 <a data-umami-event="installWeb" id="installWeb" target="_blank" rel="noopener noreferrer"
                     class="btn btn-secondary">Install for
-                    Web <svg style="margin-left: .4rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                        <path d="m21 3-9 9" />
-                        <path d="M15 3h6v6" />
-                    </svg></a>
+                    Web<svg class="icon">
+                        <use href="/icons.svg#external"></use>
+                </a>
             </div>
             <div class="manifest-container">
                 <code class="manifest-url" id="manifestUrl"></code>
                 <button data-umami-event="copyManifestUrl" onclick="copyUrl()" class="copy-btn">Copy</button>
             </div>
         </div>
+        <!-- Support -->
+        <div id="support" class="grid-btn">
+            <a href="https://www.reddit.com/r/StremioAddons/comments/1r36zji/yastream_yet_another_stream_supported_dramas_and/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button"
+                class="btn btn-reddit" target="_blank" rel="noopener noreferrer">
+                Ask me on Reddit
+                <svg class="icon">
+                    <use href="/icons.svg#external"></use>
+                </svg>
+            </a>
+            <a href="https://discord.gg/fnXwYn7wBf" class="btn btn-discord" target="_blank" rel="noopener noreferrer">
+                Join Discord
+                <svg class="icon">
+                    <use href="/icons.svg#external"></use>
+                </svg>
+            </a>
+        </div>
         <!-- Ko-fi -->
-        <div style="margin-top: 1rem;">
+        <div id="ko-fi" style="margin-top: 1rem;">
             <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
             <script
                 type='text/javascript'>kofiwidget2.init('Support me on Ko-fi :>', '#72a4f2', 'U7U01U3J0Z'); kofiwidget2.draw();</script>
         </div>
         <!-- Footer -->
-        <footer style="margin-top: 1rem"">
+        <footer style="margin-top: 1rem">
             <!-- Links -->
-            <div id=" links">
-            <div style="display: flex; justify-content: center; gap: 2rem;">
-                <div style="display: flex; flex-direction: row;">
-                    <a target="_blank" rel="noopener noreferrer" href="https://stremio-addons.net/addons/yastream">Star
-                        this
-                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
-                </div>
-                <div style="display: flex; flex-direction: row;">
-                    <a target="_blank" rel="noopener noreferrer" href="https://github.com/hoangtamthai/yastream">GitHub
-                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
-                </div>
-                <div style="display: flex;">
-                    <a target="_blank" rel="noopener noreferrer"
-                        href="https://uptime-fs.tamthai.de/status/yastream">Status
-                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
-                </div>
-                <div style="display: flex;">
-                    <a target="_blank" rel="noopener noreferrer"
-                        href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
-                        <svg style="margin-left: .2rem;" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right">
-                            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-                            <path d="m21 3-9 9" />
-                            <path d="M15 3h6v6" />
-                        </svg></a>
+            <div id="links">
+                <div style="display: flex; justify-content: center; gap: 2rem;">
+                    <div style="display: flex; flex-direction: row;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://stremio-addons.net/addons/yastream">Star this
+                            <svg class="icon">
+                                <use href="/icons.svg#external"></use>
+                            </svg>
+                        </a>
+                    </div>
+                    <div style="display: flex; flex-direction: row;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://github.com/hoangtamthai/yastream">GitHub
+                            <svg class="icon">
+                                <use href="/icons.svg#external"></use>
+                            </svg>
+                        </a>
+                    </div>
+                    <div style="display: flex;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://uptime-fs.tamthai.de/status/yastream">Status
+                            <svg class="icon">
+                                <use href="/icons.svg#external"></use>
+                            </svg>
+                        </a>
+                    </div>
+                    <div style="display: flex;">
+                        <a target="_blank" rel="noopener noreferrer"
+                            href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
+                            <svg class="icon">
+                                <use href="/icons.svg#external"></use>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
             </div>
-    </div>
-    <!-- Year. Name -->
-    <p margin-top: 1rem; ">2026. By <a href=" https://www.tamthai.de">Tam Thai</a></p>
-    </footer>
-    <!-- Changelog -->
-    <div id="changelogModal" class="modal">
-        <div class="modal-content">
-            <div style="display: flex;justify-content: space-between;">
-                <span style="width: 2rem;"></span>
-                <h2 style="text-align: center;">Changelog</h2>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="changelog">
-                {{CHANGELOG}}
+            <!-- Year. Name -->
+            <p class="margin-top: 1rem; ">2026. By <a href=" https://www.tamthai.de">Tam Thai</a></p>
+        </footer>
+        <!-- Changelog -->
+        <div id="changelogModal" class="modal">
+            <div class="modal-content">
+                <div style="display: flex;justify-content: space-between;">
+                    <span style="width: 2rem;"></span>
+                    <h2 style="text-align: center;">Changelog</h2>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="changelog">
+                    {{CHANGELOG}}
+                </div>
             </div>
         </div>
-    </div>
     </div>
 
     <script>

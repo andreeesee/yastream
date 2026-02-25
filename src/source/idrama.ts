@@ -1,4 +1,3 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
 import {
   ContentType,
@@ -8,11 +7,12 @@ import {
   Stream,
   Subtitle,
 } from "stremio-addon-sdk";
-import { cache } from "../utils/cache.js";
-import { BaseProvider } from "./provider.js";
 import { Prefix } from "../lib/manifest.js";
-import { ContentDetail } from "./meta.js";
+import { axiosGet } from "../utils/axios.js";
+import { cache } from "../utils/cache.js";
 import { parseStreamInfo } from "../utils/info.js";
+import { ContentDetail } from "./meta.js";
+import { BaseProvider } from "./provider.js";
 
 interface IDramaItem {
   id: string;
@@ -28,7 +28,6 @@ interface IDramaDetail {
   thumbnail: string;
   year: number;
 }
-
 interface IDramaBloggerResult {
   entry: {
     content: {
@@ -100,9 +99,9 @@ export class IDramaScraper extends BaseProvider {
   }
 
   async _scrapeDetail(url: string) {
-    this.logger.debug(`Scrape ${url}`);
-    const response = await axios.get(url);
-    const $ = cheerio.load(response.data);
+    this.logger.log(`GET scrape | ${url}`);
+    const response = await axiosGet(url);
+    const $ = cheerio.load(response);
     const rawTitle =
       $("h1.entry-title").text().trim() || $("title").text().trim();
     const title = rawTitle.replace(/-\[.*/g, "");
@@ -236,8 +235,8 @@ export class IDramaScraper extends BaseProvider {
       ? this.BLOG_IDS.ONELEGEND
       : this.BLOG_IDS.TVSABAY;
     const feedUrl = `https://www.blogger.com/feeds/${blogId}/posts/default/${postId}?alt=json`;
-    const response = await axios.get(feedUrl);
-    const data = response.data as IDramaBloggerResult;
+    this.logger.log(`GET blogger | ${feedUrl}`);
+    const data: IDramaBloggerResult = await axiosGet(feedUrl);
     // title: Morodok Sne មរតកស្នេហ៍ 122 -> Morodok Sne
     const title =
       data.entry.title.$t.match(/^[A-Za-z0-9 ]*/)?.[0].trim() ||
@@ -277,7 +276,8 @@ export class IDramaScraper extends BaseProvider {
    * Scrapes the list grid (article.hitmag-post)
    */
   async getItems(url: string): Promise<IDramaItem[]> {
-    const { data } = await axios.get(url, { headers: this.headers });
+    this.logger.log(`GET items | ${url}`);
+    const data = await axiosGet(url, { headers: this.headers });
     const $ = cheerio.load(data);
 
     const articles = $("article.hitmag-post").toArray();
@@ -311,7 +311,7 @@ export class IDramaScraper extends BaseProvider {
             };
           }
         } catch (err) {
-          this.logger.error(`Failed to get meta for ${title}`);
+          this.logger.error(`Failed to get meta for ${title} | ${err}`);
         }
         return {
           id: url,
