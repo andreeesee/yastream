@@ -37,6 +37,28 @@ const logger = new Logger("SERVER");
 // CORS middleware
 app.use("*", cors());
 
+// Umami Tracking for specific paths
+app.on(
+  "GET",
+  [
+    "/:configBase64/catalog/*",
+    "/:configBase64/meta/*",
+    "/:configBase64/stream/*",
+    "/:configBase64/subtitles/*",
+    "/catalog/*",
+    "/meta/*",
+    "/stream/*",
+    "/subtitles/*",
+  ],
+  async (c, next) => {
+    const url = c.req.url;
+    umami.track({
+      url,
+    });
+    await next();
+  },
+);
+
 // Stremio addon routes handler
 const handleStremioRoute = async (c: Context) => {
   return new Promise<Response>((resolve) => {
@@ -123,20 +145,6 @@ configStremioRoutes.forEach((route) => {
     });
   });
 });
-
-// Umami Tracking for specific paths
-app.on(
-  "GET",
-  ["/stream/*", "/:config/stream/*", "/subtitles/*", "/:config/subtitles/*"],
-  async (c, next) => {
-    const url = c.req.url;
-    umami.track({
-      url,
-      title: `Addon Request: ${url.split("/")[3] || "Home"}`,
-    });
-    await next();
-  },
-);
 
 // Serve decrypted subtitles
 app.get("/subtitle/:url{.*}", async (c) => {
