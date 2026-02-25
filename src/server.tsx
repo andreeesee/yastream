@@ -125,14 +125,18 @@ configStremioRoutes.forEach((route) => {
 });
 
 // Umami Tracking for specific paths
-app.on("GET", ["/stream/*", "/subtitles/*"], async (c, next) => {
-  const url = c.req.url;
-  umami.track({
-    url,
-    title: `Addon Request: ${url.split("/")[3] || "Home"}`,
-  });
-  await next();
-});
+app.on(
+  "GET",
+  ["/stream/*", "/:config/stream/*", "/subtitles/*", "/:config/subtitles/*"],
+  async (c, next) => {
+    const url = c.req.url;
+    umami.track({
+      url,
+      title: `Addon Request: ${url.split("/")[3] || "Home"}`,
+    });
+    await next();
+  },
+);
 
 // Serve decrypted subtitles
 app.get("/subtitle/:url{.*}", async (c) => {
