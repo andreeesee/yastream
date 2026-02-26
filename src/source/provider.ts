@@ -11,10 +11,10 @@ import { Logger } from "../utils/logger.js";
 import { ContentDetail } from "./meta.js";
 
 export enum Provider {
-  KISSKH = "KISSKH",
-  IDRAMA = "IDRAMA",
-  TMDB = "TMDB",
-  TVDB = "TVDB",
+  KISSKH = "kisskh",
+  IDRAMA = "idrama",
+  TMDB = "tmdb",
+  TVDB = "tvdb",
 }
 
 export abstract class BaseProvider {

@@ -1,13 +1,18 @@
 // Docs: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md
-import { ContentType, Manifest, ManifestCatalog } from "stremio-addon-sdk";
+import {
+  ContentType,
+  Manifest,
+  ManifestCatalog,
+  ManifestExtra,
+} from "stremio-addon-sdk";
 import pkg from "../../package.json" with { type: "json" };
 import { Provider } from "../source/provider.js";
 import { getOrgin } from "../utils/domain.js";
-import { defaultConfig } from "./addon.js";
 
 export interface UserConfig {
   catalog: Provider[];
   stream: Provider[];
+  catalogs: string[];
 }
 
 export enum Prefix {
@@ -17,60 +22,48 @@ export enum Prefix {
   IDRAMA = "idrama",
   KISSKH = "kisskh",
 }
-const IDRAMA_CATALOG_ID = "idrama";
-export const KisskhSearchCatalog = {
-  SERIES: `${Prefix.KISSKH}.series.Search`,
-  MOVIES: `${Prefix.KISSKH}.movie.Search`,
-};
-export const KisskhCatalog = {
-  // SERIES_NEW: `${Prefix.KISSKH}.series.New`,
-  SERIES_KOREAN: `${Prefix.KISSKH}.series.Korean`,
-  SERIES_CHINESE: `${Prefix.KISSKH}.series.Chinese`,
-  // MOVIE_NEW: `${Prefix.KISSKH}.movie.New`,
-  // MOVIE_KOREAN: `${Prefix.KISSKH}.movie.Korean`,
-  // MOVIE_CHINESE: `${Prefix.KISSKH}.movie.Chinese`,
-};
 
-const catalogMap: Map<Provider, ManifestCatalog[]> = new Map();
-catalogMap.set(Provider.IDRAMA, [
-  {
-    id: IDRAMA_CATALOG_ID,
-    name: `[${pkg.name}] iDrama`,
-    type: "series",
-    extra: [
-      { name: "search", isRequired: false },
-      { name: "skip", isRequired: false },
-    ],
-  },
-]);
+export const defaultCatalogs = [
+  `${Prefix.IDRAMA}.series.iDrama`,
+  `${Prefix.IDRAMA}.series.Search`,
 
-const kisskhSearchCatalogs = Object.entries(KisskhSearchCatalog).map(
-  ([key, value]) => {
-    const [prefix, type, name] = value.split(".");
+  `${Prefix.KISSKH}.series.Korean`,
+  `${Prefix.KISSKH}.series.Chinese`,
+  `${Prefix.KISSKH}.series.Search`,
+  `${Prefix.KISSKH}.movie.Search`,
+];
+
+function buildCatalogMap(catalogs: string[] = defaultCatalogs) {
+  const manifestCatalogs = catalogs.map((catalogId) => {
+    const [prefix, type, name] = catalogId.split(".");
+    const extra: ManifestExtra[] =
+      name === "Search"
+        ? [
+            { name: "skip", isRequired: false },
+            { name: "search", isRequired: true },
+          ]
+        : [{ name: "skip", isRequired: false }];
     const manifestCatalog: ManifestCatalog = {
-      id: value,
+      id: catalogId,
       type: type as ContentType,
       name: `[${pkg.name}] ${prefix} ${name}`,
-      extra: [
-        { name: "skip", isRequired: false, options: ["0", "50"] },
-        { name: "search", isRequired: true },
-      ],
+      extra: extra,
     };
     return manifestCatalog;
-  },
-);
-const kisskhCatalogs = Object.entries(KisskhCatalog).map(([key, value]) => {
-  const [prefix, type, name] = value.split(".");
-  const manifestCatalog: ManifestCatalog = {
-    id: value,
-    type: type as ContentType,
-    name: `[${pkg.name}] ${prefix} ${name}`,
-    extra: [{ name: "skip", isRequired: false }],
-  };
-  return manifestCatalog;
-});
-kisskhCatalogs.push(...kisskhSearchCatalogs);
-catalogMap.set(Provider.KISSKH, kisskhCatalogs);
+  });
+  const catalogMap = Object.groupBy(
+    manifestCatalogs,
+    (item) => (item.id.split(".")[0] || item.id) as Provider,
+  );
+  manifestCatalogs;
+  return catalogMap;
+}
+
+export const defaultConfig: UserConfig = {
+  catalog: [Provider.KISSKH],
+  stream: [Provider.KISSKH],
+  catalogs: defaultCatalogs,
+};
 
 const defaultManifest: Manifest = {
   id: "community.yastream",
@@ -105,11 +98,12 @@ export function buildManifest(config?: UserConfig) {
   const manifest = { ...defaultManifest };
   manifest.resources = [...defaultManifest.resources];
   manifest.catalogs = [...defaultManifest.catalogs];
-  if (config.catalog.length > 0) {
+  const catalogMap = buildCatalogMap(config.catalogs);
+  if (config.catalogs && config.catalogs.length > 0) {
     manifest.resources.push("catalog");
     manifest.resources.push("meta");
     config.catalog.forEach((provider) => {
-      const catalog = catalogMap.get(provider);
+      const catalog = catalogMap[provider];
       if (catalog) {
         manifest.catalogs.push(...catalog);
       }

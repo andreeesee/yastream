@@ -1,6 +1,7 @@
 # v0.2.3 2026-02-26
 
 - Add cache size to env
+- Add catalog selections
 
 # v0.2.2 2026-02-25
 

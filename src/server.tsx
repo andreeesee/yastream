@@ -12,9 +12,8 @@ import addonInterface, {
   buildMetaHandler,
   buildStreamHandler,
   buildSubtitleHandler,
-  defaultConfig,
 } from "./lib/addon.js";
-import { buildManifest, UserConfig } from "./lib/manifest.js";
+import { buildManifest, defaultConfig, UserConfig } from "./lib/manifest.js";
 import { cache } from "./utils/cache.js";
 import { envGet } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";

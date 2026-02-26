@@ -18,7 +18,12 @@ import { BaseProvider, Provider } from "../source/provider.js";
 import TVDBService from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
 import { Logger } from "../utils/logger.js";
-import { buildManifest, Prefix, UserConfig } from "./manifest.js";
+import {
+  buildManifest,
+  defaultConfig,
+  Prefix,
+  UserConfig,
+} from "./manifest.js";
 interface BaseArgs {
   type: ContentType;
   id: string;
@@ -30,11 +35,6 @@ interface ExtendArgs extends BaseArgs {
     videoSize: string;
   };
 }
-
-export const defaultConfig = {
-  catalog: [Provider.KISSKH],
-  stream: [Provider.KISSKH],
-};
 
 const kisskh = new KissKHScraper(Provider.KISSKH);
 const idrama = new IDramaScraper(Provider.IDRAMA);

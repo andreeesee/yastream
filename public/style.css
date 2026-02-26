@@ -8,9 +8,12 @@
   --foreground: #fff1e3;
   --rounded-md: 10px;
   --margin-md: 1rem;
+  --xxxs: 0.1rem;
+  --xxs: 0.2rem;
   --xs: 0.5rem;
   --sm: 0.8rem;
   --md: 1rem;
+  --font-md: 0.9rem;
 }
 
 body {
@@ -85,6 +88,50 @@ p {
   justify-content: space-between;
   align-items: left;
   padding-top: var(--md);
+}
+/* Tom Select */
+.ts-wrapper {
+  margin-top: var(--xs);
+  display: block;
+}
+.ts-control {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--foreground) !important;
+  font-size: var(--font-md) !important;
+  border-radius: var(--rounded-md) !important;
+}
+.ts-control input {
+  color: var(--foreground) !important;
+  font-size: var(--font-md) !important;
+}
+.ts-wrapper.multi .ts-control > div {
+  border-radius: var(--rounded-md);
+  background: var(--secondary-background) !important;
+  color: var(--foreground) !important;
+  font-size: var(--font-md) !important;
+  border-color: var(--foreground) !important;
+}
+.remove {
+  border-left: none !important;
+  margin: var(--xxxs) !important;
+}
+.ts-dropdown {
+  margin-top: var(--xs) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  font-size: var(--font-md) !important;
+  border-radius: var(--rounded-md) !important;
+  border: 1px solid var(--foreground) !important;
+}
+.ts-dropdown-content{
+  max-height: 20rem !important;
+}
+.ts-dropdown .active {
+  background: var(--secondary-background) !important;
+  color: var(--foreground) !important;
+  border-radius: var(--rounded-md) !important;
+  margin: 0 var(--xxs);
 }
 
 /* Install */

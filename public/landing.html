@@ -8,8 +8,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/img/yas.png">
     <link rel="stylesheet" href="/style.css">
+    <!-- Umami tracking -->
     <script defer src="https://umami-fs.tamthai.de/script.js"
         data-website-id="f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"></script>
+    <!-- Tom Select https://tom-select.js.org/ -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.5.2/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.5.2/dist/js/tom-select.complete.min.js"></script>
 </head>
 
 <body>
@@ -41,20 +45,40 @@
                 <h3 class="configure-type" style="margin-top:0">Catalog & Metadata</h3>
                 <div class="config-item">
                     <label>kisskh | Multiple languages</label>
-                    <input type="checkbox" id="catalog:KISSKH" checked />
+                    <input type="checkbox" id="catalog.kisskh" checked />
                 </div>
+                <!-- Catalog selection -->
+                <select id="kisskh-catalog" name="kisskhCatalog[]" multiple placeholder="Select a catalog"
+                    autocomplete="off">
+                    <option value="kisskh.movie.Korean">Korean movie</option>
+                    <option selected value="kisskh.series.Korean">Korean series</option>
+                    <option value="kisskh.movie.Chinese">Chinese movie</option>
+                    <option selected value="kisskh.series.Chinese">Chinese series</option>
+                    <option value="kisskh.movie.US">US movie</option>
+                    <option value="kisskh.series.US">US series</option>
+                    <option value="kisskh.movie.Thai">Thai movie</option>
+                    <option value="kisskh.series.Thai">Thai series</option>
+                    <option value="kisskh.movie.Philippine">Philippine movie</option>
+                    <option value="kisskh.series.Philippine">Philippine series</option>
+                    <option value="kisskh.movie.Japanese">Japanese movie</option>
+                    <option value="kisskh.series.Japanese">Japanese series</option>
+                    <option value="kisskh.movie.Hongkong">Hongkong movie</option>
+                    <option value="kisskh.series.Hongkong">Hongkong series</option>
+                    <option value="kisskh.movie.Taiwanese">Taiwanese movie</option>
+                    <option value="kisskh.series.Taiwanese">Taiwanese series</option>
+                </select>
                 <div class="config-item">
                     <label>idrama | Khmer</label>
-                    <input type="checkbox" id="catalog:IDRAMA" />
+                    <input type="checkbox" id="catalog.idrama" />
                 </div>
                 <h3 class="configure-type">Stream and subtitles</h3>
                 <div class="config-item">
                     <label>kisskh | Multiple languages</label>
-                    <input type="checkbox" id="stream:KISSKH" checked />
+                    <input type="checkbox" id="stream.kisskh" checked />
                 </div>
                 <div class="config-item">
                     <label>idrama | Khmer</label>
-                    <input type="checkbox" id="stream:IDRAMA" />
+                    <input type="checkbox" id="stream.idrama" />
                 </div>
             </form>
         </section>
@@ -219,24 +243,48 @@
             }
         }
 
+        const kisskhSelect = new TomSelect("#kisskh-catalog", {
+            plugins: {
+                remove_button: {
+                    title: 'Remove this catalog',
+                }
+            },
+            hideSelected: true,
+        });
         // Configure
         document.getElementById('configureForm').addEventListener('change', function (e) {
-            console.log(e);
+            <!-- console.log(e); -->
             e.preventDefault();
             updateManifestUrl();
         });
         function updateManifestUrl() {
             const config = {
+                catalogs: [],
                 catalog: [],
                 stream: [],
             };
+
+            const kisskhCatalogs = document.getElementById('kisskh-catalog');
+            const kisskhCatalog = document.getElementById('catalog.kisskh');
+            if (kisskhCatalog.checked === true) {
+                kisskhCatalogs.nextSibling.style.display = 'block';
+            } else {
+                kisskhCatalogs.nextSibling.style.display = 'none';
+                kisskhSelect.clear();
+            }
+            let selectedCatalogs = kisskhCatalogs.selectedOptions;
+            config.catalogs = Array.from(selectedCatalogs).map((catalog) => { return catalog.value });
+            config.catalogs = [...config.catalogs, ...["kisskh.series.Search", "kisskh.movie.Search", "idrama.series.Search", "idrama.series.iDrama"]]
+
             const checkedBoxes = document.querySelectorAll('#configureForm input[type="checkbox"]:checked');
             checkedBoxes.forEach(box => {
-                const [type, source] = box.id.split(":");
+                const [type, source] = box.id.split(".");
                 if (config[type]) {
                     config[type].push(source);
                 }
             });
+
+            console.log('[config]', config);
             const configJson = JSON.stringify(config);
             const configBase64 = btoa(configJson);
             const manifestUrl = window.location.origin + '/' + configBase64 + '/manifest.json';
@@ -248,27 +296,27 @@
             setInstallUrl(window.location.origin + '/manifest.json');
             const path = window.location.pathname;
             const match = path.match(/\/(.+)\/configure/);
-            console.debug(match)
             if (match && match[1]) {
-                console.debug(match)
                 try {
                     const config = JSON.parse(atob(match[1]));
 
-                    // config looks like: { catalog: ["IDRAMA"], stream: ["KISSKH", "IDRAMA"] }
                     Object.keys(config).forEach(type => {
-                        const activeSources = config[type]; // e.g., ["IDRAMA"]
-
-                        activeSources.forEach(source => {
-                            // Reconstruct the ID (e.g., "catalog:IDRAMA")
-                            const inputId = `${type}:${source}`;
-                            const input = document.getElementById(inputId);
-                            if (input) {
-                                input.checked = true;
-                            }
-                        });
+                        const values = config[type];
+                        if (type === 'catalogs') {
+                            kisskhSelect.setValue(values)
+                        } else {
+                            values.forEach(value => {
+                                // Reconstruct the ID (e.g., "catalog.idrama")
+                                const inputId = `${type}.${value}`;
+                                const input = document.getElementById(inputId);
+                                if (input) {
+                                    input.checked = true;
+                                }
+                            });
+                        }
                     });
 
-                    // After applying saved config, update the install links immediately
+                    // After applying saved config, update the install links 
                     updateManifestUrl();
                 } catch (error) {
                     console.error("Failed to decode configuration:", error);
