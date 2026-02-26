@@ -157,7 +157,7 @@ class KissKHScraperr extends BaseProvider {
     let urls = [];
     let urlNum = 1;
     let page = this.getPage(pageSize, skip, urlNum);
-    if (type === "series" || t == holliwood) {
+    if (type === "series" || t === holliwood) {
       urlNum = 2;
       page = this.getPage(pageSize, skip, urlNum);
       urls.push(

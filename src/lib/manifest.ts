@@ -55,7 +55,6 @@ function buildCatalogMap(catalogs: string[] = defaultCatalogs) {
     manifestCatalogs,
     (item) => (item.id.split(".")[0] || item.id) as Provider,
   );
-  manifestCatalogs;
   return catalogMap;
 }
 
@@ -99,11 +98,11 @@ export function buildManifest(config?: UserConfig) {
   manifest.resources = [...defaultManifest.resources];
   manifest.catalogs = [...defaultManifest.catalogs];
   const catalogMap = buildCatalogMap(config.catalogs);
-  if (config.catalogs && config.catalogs.length > 0) {
+  if (config.catalog && config.catalog.length > 0) {
     manifest.resources.push("catalog");
     manifest.resources.push("meta");
     config.catalog.forEach((provider) => {
-      const catalog = catalogMap[provider];
+      const catalog = catalogMap[provider.toLowerCase() as Provider];
       if (catalog) {
         manifest.catalogs.push(...catalog);
       }

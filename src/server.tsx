@@ -18,6 +18,7 @@ import { cache } from "./utils/cache.js";
 import { envGet } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";
 import { getSetDecryptedSubtitle } from "./utils/subtitle.js";
+import { Provider } from "./source/provider.js";
 const { getRouter } = stremioPkg;
 
 const umami = new Umami();
@@ -82,8 +83,11 @@ stremioRoutes.forEach((route) => {
 const decodeConfig = (configBase64: string): UserConfig => {
   try {
     const decoded = Buffer.from(configBase64, "base64").toString("utf-8");
-    logger.debug(`Decoded config ${decoded}`);
-    return JSON.parse(decoded);
+    logger.debug(`Config | ${decoded}`);
+    const config: UserConfig = JSON.parse(decoded);
+    config.catalog = config.catalog.map((id) => id.toLowerCase() as Provider);
+    config.stream = config.catalog.map((id) => id.toLowerCase() as Provider);
+    return config;
   } catch (error) {
     logger.error(`Fail parse config | ${error}`);
     return defaultConfig;
