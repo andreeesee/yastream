@@ -53,24 +53,7 @@ docker run -d \
 
 The .env file require only two key TMDB and TVDB.
 The other value are optional with the default value written after | e.g. default PORT is 55913.
-
-```env
-# REQUIRED
-# The Movie Database Read Only Access Key. To get title to search on other providers | eySomething
-TMDB_API_KEY=
-# TVDB key. For series with no imdb id | eySomething
-TVDB_API_KEY=
-
-# OPTIONAL
-# Domain that the addon serve | localhost
-DOMAIN=
-# Running port | 55913
-PORT=
-# Debug-key for https://host/dashboard?key=DEBUG_KEY | debug-key
-DEBUG_KEY=
-# Log level TRACE -> DEBUG -> INFO -> WARN -> ERROR -> NONE | INFO
-LOG_LEVEL=INFO
-```
+Example [env file](.env.example)
 
 ## Development
 

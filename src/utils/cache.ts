@@ -1,3 +1,4 @@
+import { envGet } from "./env.js";
 import { Logger } from "./logger.js";
 
 type CacheValue = {
@@ -9,7 +10,7 @@ type CacheValue = {
 class GlobalCache {
   private logger = new Logger("CACHE");
   private cache = new Map<string, CacheValue>();
-  private MAX_BYTES = 100 * 1024 * 1024; // 100MB
+  private MAX_BYTES = parseInt(envGet("CACHE_SIZE_MB") || "100") * 1024 * 1024;
   private currentByteSize = 0;
 
   /**

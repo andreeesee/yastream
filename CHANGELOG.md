@@ -1,3 +1,7 @@
+# v0.2.3 2026-02-26
+
+- Add cache size to env
+
 # v0.2.2 2026-02-25
 
 - Improve caching mechanism, cache each url
