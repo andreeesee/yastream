@@ -85,8 +85,9 @@ const decodeConfig = (configBase64: string): UserConfig => {
     const decoded = Buffer.from(configBase64, "base64").toString("utf-8");
     logger.debug(`Config | ${decoded}`);
     const config: UserConfig = JSON.parse(decoded);
+    // TODO clean up when migrate all user
     config.catalog = config.catalog.map((id) => id.toLowerCase() as Provider);
-    config.stream = config.catalog.map((id) => id.toLowerCase() as Provider);
+    config.stream = config.stream.map((id) => id.toLowerCase() as Provider);
     return config;
   } catch (error) {
     logger.error(`Fail parse config | ${error}`);
@@ -116,7 +117,9 @@ configStremioRoutes.forEach((route) => {
   app.get(route, async (c: Context) => {
     const configBase64 = c.req.param("configBase64");
     const config = decodeConfig(configBase64);
+    logger.log(`CONFIG ${JSON.stringify(config)}`);
     const manifest = buildManifest(config);
+    logger.log(`Manifes ${JSON.stringify(manifest)}`);
     const builder = new addonBuilder(manifest);
     if (manifest.resources.includes("catalog")) {
       builder.defineCatalogHandler(async (args) => {
@@ -129,6 +132,7 @@ configStremioRoutes.forEach((route) => {
       });
     }
     if (manifest.resources.includes("stream")) {
+      logger.log(`CONFIG ${JSON.stringify(config)}`);
       builder.defineStreamHandler(async (args) => {
         return await buildStreamHandler(args, config);
       });
