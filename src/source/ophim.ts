@@ -1,0 +1,133 @@
+import {
+  Args,
+  ContentType,
+  MetaDetail,
+  MetaPreview,
+  Stream,
+  Subtitle,
+} from "stremio-addon-sdk";
+import { Prefix, UserConfig } from "../lib/manifest.js";
+import { axiosGet } from "../utils/axios.js";
+import { parseStreamInfo } from "../utils/info.js";
+import { ContentDetail } from "./meta.js";
+import { BaseProvider } from "./provider.js";
+import { cache } from "../utils/cache.js";
+
+interface OphimSearchResponse {
+  data: {
+    items: OphimMovie[];
+  };
+}
+interface OphimMovie {
+  name: string;
+  year: number;
+  slug: string;
+  poster_url: string;
+  episodes: OphimServer[];
+}
+interface OphimDetailResponse {
+  data: {
+    item: OphimMovie;
+  };
+}
+interface OphimServer {
+  server_data: OphimEpisodeItem[];
+}
+interface OphimEpisodeItem {
+  name: string;
+  slug: string;
+  link_m3u8: string;
+}
+
+export class OphimScraper extends BaseProvider {
+  readonly baseUrl = "https://ophim1.com";
+  supportedPrefix = [Prefix.IMDB, Prefix.TMDB];
+
+  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+    const { id, type, extra } = args;
+    const search = extra.search;
+    throw new Error("Method not implemented.");
+  }
+
+  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
+    throw new Error("Method not implemented.");
+  }
+
+  async getStreams(
+    content: ContentDetail,
+    config: UserConfig,
+  ): Promise<Stream[]> {
+    try {
+      const { title, type, year, season, episode, tmdbId, altTitle } = content;
+      const streamKey = `streams:${this.name}:${type}:${title}:${season}:${episode}`;
+      const cacheStreams = cache.get(streamKey);
+      if (cacheStreams) return cacheStreams;
+      const data = await this.searchTitle(title, year);
+      if (!data) return [];
+      const firstServer = data.data.item.episodes[0];
+      let episodeDetail = null;
+      if (type !== "movie") {
+        episodeDetail = firstServer?.server_data.find((episodeItem) =>
+          episodeItem.name.includes(episode?.toString() || "1"),
+        );
+      } else {
+        episodeDetail = firstServer?.server_data[0];
+      }
+      const url = episodeDetail?.link_m3u8;
+      if (!url) return [];
+      this.logger.log(`Stream Url | ${url}`);
+      const info = config.info ? await parseStreamInfo(url) : undefined;
+      const formatTitle = this.formatStreamTitle(
+        data.data.item.name,
+        year,
+        season,
+        episode,
+        info,
+      );
+      const streams: Stream[] = [
+        {
+          name: this.displayName,
+          title: formatTitle,
+          url: url,
+          behaviorHints: {
+            notWebReady: true,
+            group: `yastream-ophim`,
+          },
+        },
+      ];
+      cache.set(streamKey, streams, 8 * 60 * 60 * 1000);
+      return streams;
+    } catch (error) {
+      this.logger.error(`Fail to get ${content.title} | ${error}`);
+      return [];
+    }
+  }
+
+  getSubtitles(content: ContentDetail): Promise<Subtitle[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  async searchTitle(
+    title: string,
+    year?: number,
+  ): Promise<OphimDetailResponse | null> {
+    const searchUrl = `${this.baseUrl}/v1/api/tim-kiem?keyword=${title}&year=${year}`;
+    this.logger.log(`GET search | ${searchUrl}`);
+    const data = await axiosGet<OphimSearchResponse>(searchUrl);
+    if (!data) return null;
+    if (data.data.items.length === 0) return null;
+    // filter by year no FUSE
+    const slug = data.data.items.find((item) => {
+      return item.year == year;
+    })?.slug;
+    const detailUrl = `${this.baseUrl}/v1/api/phim/${slug}`;
+    this.logger.log(`GET detail | ${detailUrl}`);
+    const movie = await axiosGet<OphimDetailResponse>(detailUrl);
+    if (!movie) return null;
+    return movie;
+  }
+}

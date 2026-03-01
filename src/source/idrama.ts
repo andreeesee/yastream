@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import {
+  Args,
   ContentType,
   MetaDetail,
   MetaPreview,
@@ -7,12 +8,13 @@ import {
   Stream,
   Subtitle,
 } from "stremio-addon-sdk";
-import { Prefix } from "../lib/manifest.js";
+import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
 import { parseStreamInfo } from "../utils/info.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
+import { envGet } from "../utils/env.js";
 
 interface IDramaItem {
   id: string;
@@ -54,11 +56,9 @@ export class IDramaScraper extends BaseProvider {
     ONELEGEND: "596013908374331296",
   };
 
-  async searchCatalog(
-    id: string,
-    type: ContentType,
-    search: string,
-  ): Promise<MetaPreview[]> {
+  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+    const { type, extra } = args;
+    const search = extra.search;
     this.logger.log(`Search | ${search}`);
     const url = `${this.baseUrl}/?s=${search}`;
     const searchKey = `search:${url}`;
@@ -76,11 +76,9 @@ export class IDramaScraper extends BaseProvider {
     return catalog;
   }
 
-  async getCatalog(
-    id: string,
-    type: ContentType,
-    skip?: number,
-  ): Promise<MetaPreview[]> {
+  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+    const { id, type, extra } = args;
+    const skip = extra.skip;
     const page = skip ? Math.ceil(skip / this.pageSize) + 1 : 1;
     const url = `${this.baseUrl}/page/${page}/`;
     const catalogKey = `catalog:${url}`;
@@ -100,7 +98,7 @@ export class IDramaScraper extends BaseProvider {
 
   async _scrapeDetail(url: string) {
     this.logger.log(`GET scrape | ${url}`);
-    const response = await axiosGet(url);
+    const response = await axiosGet<any>(url);
     const $ = cheerio.load(response);
     const rawTitle =
       $("h1.entry-title").text().trim() || $("title").text().trim();
@@ -141,19 +139,10 @@ export class IDramaScraper extends BaseProvider {
     return meta;
   }
 
-  async getStreams(
-    title: string,
-    type: ContentType,
-    year?: number,
-    season?: number,
-    episode?: number,
-    id?: string,
-    altTitle?: string,
-  ): Promise<Stream[] | null> {
+  async getStreams(content: ContentDetail): Promise<Stream[]> {
+    const { title, type, year, season, episode, id, altTitle } = content;
     try {
-      if (!id) {
-        return [];
-      }
+      if (!id) return [];
       this.logger.log(`Stream | ${title} ${id}`);
       const postId = id;
       const streamKey = `streams:${title}:${type}:${season}:${episode}`;
@@ -162,7 +151,9 @@ export class IDramaScraper extends BaseProvider {
         return cacheStreams;
       }
 
-      const { urls } = await this.getStreamDetail(postId);
+      const detail = await this.getStreamDetail(postId);
+      if (!detail) return [];
+      const { urls } = detail;
       this.logger.debug(`Title ${title}`);
       const url = episode ? urls[episode - 1] : urls[0];
       let info;
@@ -182,7 +173,7 @@ export class IDramaScraper extends BaseProvider {
       const streams: Stream[] = [
         {
           url: url,
-          name: "yastream",
+          name: envGet("DISPLAY_NAME") || "yastream",
           title: `${formatTitle}`,
           behaviorHints: {
             notWebReady: true,
@@ -204,7 +195,9 @@ export class IDramaScraper extends BaseProvider {
 
   async _getEpisodes(postId: string): Promise<MetaVideo[]> {
     try {
-      const { urls, title, thumbnail } = await this.getStreamDetail(postId);
+      const detail = await this.getStreamDetail(postId);
+      if (!detail) return [];
+      const { urls, title, thumbnail } = detail;
       const videos: MetaVideo[] = urls.map((url, index) => {
         const season = 1;
         return {
@@ -224,7 +217,7 @@ export class IDramaScraper extends BaseProvider {
     }
   }
 
-  async getStreamDetail(postId: string): Promise<IDramaDetail> {
+  async getStreamDetail(postId: string): Promise<IDramaDetail | null> {
     const detailKey = `detail:idrama:${postId}`;
     const cacheDetail = cache.get(detailKey);
     if (cacheDetail) return cacheDetail;
@@ -236,7 +229,8 @@ export class IDramaScraper extends BaseProvider {
       : this.BLOG_IDS.TVSABAY;
     const feedUrl = `https://www.blogger.com/feeds/${blogId}/posts/default/${postId}?alt=json`;
     this.logger.log(`GET blogger | ${feedUrl}`);
-    const data: IDramaBloggerResult = await axiosGet(feedUrl);
+    const data = await axiosGet<IDramaBloggerResult>(feedUrl);
+    if (!data) return null;
     // title: Morodok Sne មរតកស្នេហ៍ 122 -> Morodok Sne
     const title =
       data.entry.title.$t.match(/^[A-Za-z0-9 ]*/)?.[0].trim() ||
@@ -277,7 +271,8 @@ export class IDramaScraper extends BaseProvider {
    */
   async getItems(url: string): Promise<IDramaItem[]> {
     this.logger.log(`GET items | ${url}`);
-    const data = await axiosGet(url, { headers: this.headers });
+    const data = await axiosGet<any>(url, { headers: this.headers });
+    if (!data) return [];
     const $ = cheerio.load(data);
 
     const articles = $("article.hitmag-post").toArray();

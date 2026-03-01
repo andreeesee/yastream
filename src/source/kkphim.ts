@@ -1,0 +1,160 @@
+import {
+  Args,
+  ContentType,
+  MetaDetail,
+  MetaPreview,
+  Stream,
+  Subtitle,
+} from "stremio-addon-sdk";
+import { Prefix, UserConfig } from "../lib/manifest.js";
+import { axiosGet } from "../utils/axios.js";
+import { cache } from "../utils/cache.js";
+import { parseStreamInfo } from "../utils/info.js";
+import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
+import { getProxyLink } from "../utils/mediaflowproxy.js";
+import { ContentDetail } from "./meta.js";
+import { BaseProvider } from "./provider.js";
+
+interface KkphimSearchResponse {
+  data: {
+    items: KkphimMovie[];
+  };
+}
+interface KkphimMovie {
+  name: string;
+  slug: string;
+  poster_url: string;
+  year: number;
+}
+interface KkphimShowResponse {
+  status: boolean;
+  movie: KkphimMovie;
+  episodes: KkphimEpisode[];
+}
+interface KkphimEpisode {
+  server_data: KkphimEpisodeItem[];
+}
+interface KkphimEpisodeItem {
+  name: string;
+  slug: string;
+  link_m3u8: string;
+}
+
+export class KkphimScraper extends BaseProvider {
+  readonly baseUrl = "https://phimapi.com";
+  supportedPrefix = [Prefix.IMDB, Prefix.TMDB];
+
+  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+    const { id, type, extra } = args;
+    const search = extra.search;
+    throw new Error("Method not implemented.");
+  }
+
+  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
+    throw new Error("Method not implemented.");
+  }
+
+  async getStreams(
+    content: ContentDetail,
+    config: UserConfig,
+  ): Promise<Stream[]> {
+    try {
+      const { title, type, year, season, episode, tmdbId, id, altTitle } =
+        content;
+      const streamKey = `streams:${this.name}:${type}:${title}:${season}:${episode}`;
+      const cacheStreams = cache.get(streamKey);
+      if (cacheStreams) return cacheStreams;
+      let data = null;
+      if (tmdbId) {
+        const url = `${this.baseUrl}/tmdb/${type === "series" ? "tv" : "movie"}/${tmdbId}`;
+        this.logger.log(`GET tmdbId | ${url}`);
+        data = await axiosGet<KkphimShowResponse>(url);
+      }
+      if (!data?.status) {
+        data = await this.searchTitle(title, year);
+      }
+      if (!data) return [];
+      const subtitleServer = data.episodes[0];
+      if (!subtitleServer) return [];
+      const voiceOverServer = data.episodes[1];
+      let episodeDetails: KkphimEpisodeItem[] = [];
+      if (type !== "movie") {
+        episodeDetails = [
+          subtitleServer.server_data.find((episodeItem) =>
+            episodeItem.name.includes(episode?.toString() || "1"),
+          )!,
+        ];
+        if (voiceOverServer) {
+          episodeDetails.push(
+            voiceOverServer.server_data.find((episodeItem) =>
+              episodeItem.name.includes(episode?.toString() || "1"),
+            )!,
+          );
+        }
+      } else {
+        episodeDetails = [subtitleServer.server_data[0]!];
+        if (voiceOverServer) {
+          episodeDetails.push(voiceOverServer.server_data[0]!);
+        }
+      }
+      const name = data.movie.name;
+      const streamPromises = episodeDetails.map(async (item, index) => {
+        const link = item.link_m3u8;
+        const proxyLink = getProxyLink(link);
+        const info = config.info ? await parseStreamInfo(proxyLink) : undefined;
+        const formatTitle = this.formatStreamTitle(
+          `${name} | ${index === 0 ? "Phụ đề" : "Thuyết Minh"}`,
+          year,
+          season,
+          episode,
+          info,
+        );
+        const stream: Stream = {
+          name: this.displayName,
+          title: formatTitle,
+          url: proxyLink,
+          behaviorHints: {
+            countryWhitelist: [iso639FromCountryCode(CountryCode.vi)],
+            notWebReady: true,
+            group: `yastream-kkphim`,
+          },
+        };
+        return stream;
+      });
+      const streams: Stream[] = await Promise.all(streamPromises);
+      cache.set(streamKey, streams, 8 * 60 * 60 * 1000);
+      return streams as Stream[];
+    } catch (error) {
+      this.logger.error(`Fail to get ${content.title}, ${error}`);
+      return [];
+    }
+  }
+
+  getSubtitles(content: ContentDetail): Promise<Subtitle[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  async searchTitle(
+    title: string,
+    year?: number,
+  ): Promise<KkphimShowResponse | null> {
+    const searchUrl = `${this.baseUrl}/v1/api/tim-kiem?keyword=${title}&year=${year}`;
+    this.logger.log(`GET search | ${searchUrl}`);
+    const data = await axiosGet<KkphimSearchResponse>(searchUrl);
+    if (!data) return null;
+    if (!data.data.items) return null;
+    // filter by year no FUSE
+    const slug = data.data.items.find((item) => {
+      return item.year == year;
+    })?.slug;
+    const detailUrl = `${this.baseUrl}/phim/${slug}`;
+    this.logger.log(`GET detail | ${detailUrl}`);
+    const movie = await axiosGet<KkphimShowResponse>(detailUrl);
+    if (!movie) return null;
+    return movie;
+  }
+}

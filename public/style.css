@@ -76,6 +76,9 @@ p {
   border-radius: var(--rounded-md);
   padding: var(--margin-md);
 }
+.configure-type:first-child {
+  margin-top: 0;
+}
 .configure-type {
   text-align: left;
   border-bottom: 2px solid var(--foreground);
@@ -88,6 +91,9 @@ p {
   justify-content: space-between;
   align-items: left;
   padding-top: var(--md);
+}
+.config-item input {
+  margin-left: var(--md);
 }
 /* Tom Select */
 .ts-wrapper {
@@ -124,7 +130,7 @@ p {
   border-radius: var(--rounded-md) !important;
   border: 1px solid var(--foreground) !important;
 }
-.ts-dropdown-content{
+.ts-dropdown-content {
   max-height: 20rem !important;
 }
 .ts-dropdown .active {

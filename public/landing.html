@@ -33,16 +33,14 @@
             </div>
             <h2>Yet Another Stream</h2>
             <h3 id="versionTag" style="cursor: pointer; text-decoration: underline dotted;">v{{VERSION}}</h3>
-            <p>Stream Asian Dramas, Series and Movies directly from <a target="_blank" rel="noopener noreferrer"
-                    href="https://kisskh.co">kisskh</a> and <a target="_blank" rel="noopener noreferrer"
-                    href="https://idramahd.com">idrama</a> (Khmer only). Powered by <a target="_blank"
+            <p>Stream Asian Dramas, Series and Movies directly from multiple source. Powered by <a target="_blank"
                     rel="noopener noreferrer" href="https://themoviedb.org">TMDB</a> and <a target="_blank"
                     rel="noopener noreferrer" href="https://www.thetvdb.com">TVDB</a> for metadata.</p>
         </header>
         <!-- Configure -->
         <section id="configure" class="configure">
             <form id="configureForm">
-                <h3 class="configure-type" style="margin-top:0">Catalog & Metadata</h3>
+                <h3 class="configure-type">Catalog & Metadata</h3>
                 <div class="config-item">
                     <label>kisskh | Multiple languages</label>
                     <input type="checkbox" id="catalog.kisskh" checked />
@@ -79,6 +77,26 @@
                 <div class="config-item">
                     <label>idrama | Khmer</label>
                     <input type="checkbox" id="stream.idrama" />
+                </div>
+                <div class="config-item">
+                    <label>kkphim | Vietnamese (sometimes has AD, need Vietnamese VPN or Mediaflow-proxy)</label>
+                    <input type="checkbox" id="stream.kkphim" />
+                </div>
+                <div class="config-item">
+                    <label>ophim1 | Vietnamese</label>
+                    <input type="checkbox" id="stream.ophim" />
+                </div>
+                <h3 class="configure-type">Filter and display</h3>
+                <div class="config-item">
+                    <label>Show Adult/NSFW</label>
+                    <input type="checkbox" id="nsfw" />
+                </div>
+                <div class="config-item">
+                    <label>Show detail stream information
+                        <br />e.g. 1 hours 1 minutes 0.8GB 720p
+                        <br />(slower result when checked)
+                    </label>
+                    <input type="checkbox" id="info" />
                 </div>
             </form>
         </section>
@@ -253,7 +271,6 @@
         });
         // Configure
         document.getElementById('configureForm').addEventListener('change', function (e) {
-            <!-- console.log(e); -->
             e.preventDefault();
             updateManifestUrl();
         });
@@ -272,15 +289,23 @@
                 kisskhCatalogs.nextSibling.style.display = 'none';
                 kisskhSelect.clear();
             }
-            let selectedCatalogs = kisskhCatalogs.selectedOptions;
-            config.catalogs = Array.from(selectedCatalogs).map((catalog) => { return catalog.value });
-            config.catalogs = [...config.catalogs, ...["kisskh.series.Search", "kisskh.movie.Search", "idrama.series.Search", "idrama.series.iDrama"]]
+            debugger;
+            let selectedCatalogs = kisskhSelect.getValue();
+            config.catalogs = Array.from(selectedCatalogs).map((catalog) => { return catalog });
+            const defaultCatalogs = ["kisskh.series.Search", "kisskh.movie.Search", "idrama.series.Search", "idrama.series.iDrama"];
+            config.catalogs = [...config.catalogs, ...defaultCatalogs]
 
-            const checkedBoxes = document.querySelectorAll('#configureForm input[type="checkbox"]:checked');
+            const checkedBoxes = document.querySelectorAll('#configureForm input[type="checkbox"]');
             checkedBoxes.forEach(box => {
-                const [type, source] = box.id.split(".");
-                if (config[type]) {
-                    config[type].push(source);
+                // for nsfw, info
+                if (!box.id.includes(".")) {
+                    config[box.id] = box.checked
+                } else if (box.checked == true) {
+                    // for catalog and stream provider
+                    const [type, source] = box.id.split(".");
+                    if (config[type]) {
+                        config[type].push(source);
+                    }
                 }
             });
 
@@ -299,15 +324,19 @@
             if (match && match[1]) {
                 try {
                     const config = JSON.parse(atob(match[1]));
+                    console.log(JSON.stringify(config))
 
-                    Object.keys(config).forEach(type => {
-                        const values = config[type];
-                        if (type === 'catalogs') {
+                    Object.keys(config).forEach(key => {
+                        const values = config[key];
+                        if (key === 'nsfw' || key === 'info') {
+                            const input = document.getElementById(key);
+                            input.checked = config[key];
+                        } else if (key === 'catalogs') {
                             kisskhSelect.setValue(values)
-                        } else {
+                        } else if (key === 'catalog' || key === 'stream') {
                             values.forEach(value => {
                                 // Reconstruct the ID (e.g., "catalog.idrama")
-                                const inputId = `${type}.${value}`;
+                                const inputId = `${key}.${value}`;
                                 const input = document.getElementById(inputId);
                                 if (input) {
                                     input.checked = true;

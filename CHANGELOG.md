@@ -1,3 +1,12 @@
+# v0.2.3 2026-03-01
+
+- Add Vietnamese providers:
+  1. kkphim (sometimes has AD, need Vietnamese VPN/Mediaflow-proxy)
+  2. ophim
+- Add some filter and display options
+  1. Hide/Show nsfw content (if missing please report in discord)
+  2. Hide/Show detail stream information (slower results when enabled)
+
 # v0.2.3 2026-02-26
 
 - Add cache size to env

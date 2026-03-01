@@ -1,18 +1,22 @@
 import {
+  Args,
   ContentType,
   MetaDetail,
   MetaPreview,
   Stream,
   Subtitle,
 } from "stremio-addon-sdk";
-import { Prefix } from "../lib/manifest.js";
+import { Prefix, UserConfig } from "../lib/manifest.js";
 import { getDisplayResolution, StreamInfo } from "../utils/info.js";
 import { Logger } from "../utils/logger.js";
 import { ContentDetail } from "./meta.js";
+import { envGet } from "../utils/env.js";
 
 export enum Provider {
   KISSKH = "kisskh",
   IDRAMA = "idrama",
+  KKPHIM = "kkphim",
+  OPHIM = "ophim",
   TMDB = "tmdb",
   TVDB = "tvdb",
 }
@@ -29,37 +33,31 @@ export abstract class BaseProvider {
     "Upgrade-Insecure-Requests": "1",
   };
   protected logger: Logger;
+  protected displayName: string;
   name: Provider;
   abstract supportedPrefix: Prefix[];
+  nsfwDefaultThumbnail =
+    "https://images5.alphacoders.com/432/thumb-1920-432119.jpg";
 
   constructor(name: Provider) {
     this.name = name;
     this.logger = new Logger(name);
+    this.displayName = `${envGet("DISPLAY_NAME") || "yastream"}\n${name}`;
   }
 
   abstract searchCatalog(
-    id: string,
-    type: ContentType,
-    search: string,
+    args: Args,
+    config: UserConfig,
   ): Promise<MetaPreview[]>;
 
-  abstract getCatalog(
-    id: string,
-    type: ContentType,
-    skip?: number,
-  ): Promise<MetaPreview[]>;
+  abstract getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]>;
 
   abstract getMeta(id: string, type: ContentType): Promise<MetaDetail | null>;
 
   abstract getStreams(
-    title: string,
-    type: ContentType,
-    year?: number,
-    season?: number,
-    episode?: number,
-    id?: string,
-    altTitle?: string,
-  ): Promise<Stream[] | null>;
+    content: ContentDetail,
+    config: UserConfig,
+  ): Promise<Stream[]>;
 
   abstract getSubtitles(content: ContentDetail): Promise<Subtitle[]>;
 

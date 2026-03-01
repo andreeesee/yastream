@@ -6,32 +6,22 @@ import {
   MetaPreview,
   MetaDetail,
   Subtitle,
+  Args,
 } from "stremio-addon-sdk";
-import { Prefix } from "../lib/manifest.js";
+import { Prefix, UserConfig } from "../lib/manifest.js";
 import { ContentDetail } from "./meta.js";
 
 export class DramaniceScraper extends BaseProvider {
   supportedPrefix: Prefix[] = [Prefix.IMDB, Prefix.TMDB, Prefix.TVDB];
   baseUrl = "https://dramanicee.lat";
-  getStreams(
-    title: string,
-    type: ContentType,
-    year?: number,
-    season?: number,
-    episode?: number,
-    id?: string,
-    altTitle?: string,
-  ): Promise<Stream[] | null> {
+
+  async getStreams(content: ContentDetail): Promise<Stream[]> {
     throw new Error("Method not implemented.");
   }
-  searchCatalog(search: string, type: ContentType): Promise<MetaPreview[]> {
+  async searchCatalog(): Promise<MetaPreview[]> {
     throw new Error("Method not implemented.");
   }
-  getCatalog(
-    id: string,
-    type: ContentType,
-    skip?: number,
-  ): Promise<MetaPreview[]> {
+  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
     throw new Error("Method not implemented.");
   }
   getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {

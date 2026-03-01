@@ -1,5 +1,5 @@
-import axios from "axios";
 import { execSync } from "node:child_process";
+import { axiosGet } from "./axios.js";
 import { Logger } from "./logger.js";
 
 const logger = new Logger("INFO");
@@ -28,16 +28,23 @@ interface ProbeInfo {
   };
 }
 
-export async function parseStreamInfo(url: string): Promise<StreamInfo> {
-  const uri = new URL(url);
-  const isM3u8 = uri.pathname.endsWith(".m3u8");
-  const isMp4 = uri.pathname.endsWith(".mp4");
-  if (isM3u8) {
-    return parseM3u8(url);
-  } else if (isMp4) {
-    return parseMp4(url);
+export async function parseStreamInfo(
+  url: string,
+): Promise<StreamInfo | undefined> {
+  let info: StreamInfo | undefined = { size: 0 };
+  try {
+    const uri = new URL(url);
+    const isM3u8 = uri.pathname.endsWith(".m3u8");
+    const isMp4 = uri.pathname.endsWith(".mp4");
+    if (isM3u8) {
+      info = await parseM3u8(url);
+    } else if (isMp4) {
+      info = await parseMp4(url);
+    }
+  } catch (error) {
+    logger.error(`Fail to parse stream info | ${error}`);
   }
-  return { size: 0 };
+  return info;
 }
 
 async function parseMp4(url: string): Promise<StreamInfo> {
@@ -66,9 +73,11 @@ function getMinutes(durationSeconds: number) {
   return Math.floor((durationSeconds / 60) % 60);
 }
 
-async function parseM3u8(url: string): Promise<StreamInfo> {
-  const response = await axios.get(url);
-  const lines = response.data.split("\n");
+async function parseM3u8(url: string): Promise<StreamInfo | undefined> {
+  logger.log(`GET m3u8 | ${url}`);
+  const data = await axiosGet<string>(url);
+  if (!data) return undefined;
+  const lines = data.split("\n");
 
   let totalDuration = 0;
   let totalSizeInBytes = 0;
@@ -98,8 +107,6 @@ async function parseM3u8(url: string): Promise<StreamInfo> {
     }
   });
   let gb = totalSizeInBytes / (1024 * 1024 * 1024);
-  const hours = getHours(totalDuration);
-  const minutes = getMinutes(totalDuration);
   let probeResult;
   logger.debug(`First segment ${firstSegmentUrl}`);
   if (firstSegmentUrl && isValidSegmentUrl(firstSegmentUrl)) {
@@ -107,6 +114,12 @@ async function parseM3u8(url: string): Promise<StreamInfo> {
   } else {
     probeResult = await getProbeInfo(url);
   }
+  if (probeResult?.format.duration && totalDuration == 0) {
+    totalDuration = probeResult?.format.duration;
+  }
+
+  const hours = getHours(totalDuration);
+  const minutes = getMinutes(totalDuration);
   if (!probeResult) {
     return {
       size: gb,
@@ -146,16 +159,14 @@ function isValidSegmentUrl(url: string) {
 
 function getProbeInfo(url: string): ProbeInfo | null {
   try {
-    const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height,bit_rate -of json -allowed_segment_extensions png,m4s,jpg "${url}"`;
+    const cmd = `ffprobe -v error -select_streams v:0 -show_entries format=duration,size -show_entries stream=width,height,bit_rate -of json -allowed_segment_extensions ALL -extension_picky 0 "${url}"`;
     const output = execSync(cmd).toString();
     const data: ProbeInfo = JSON.parse(output);
     const size = (data.streams[0]?.bit_rate! * data.format.duration) / 8;
     data.format.size = size / (1024 * 1024 * 1024);
     return data;
   } catch (err) {
-    logger.error(
-      `FFprobe failed. Make sure ffmpeg is installed on your system | Url ${url}${err}`,
-    );
+    logger.error(`FFprobe failed | Url ${url}, Error: ${err}`);
     return null;
   }
 }

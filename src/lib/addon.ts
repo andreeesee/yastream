@@ -24,6 +24,8 @@ import {
   Prefix,
   UserConfig,
 } from "./manifest.js";
+import { KkphimScraper } from "../source/kkphim.js";
+import { OphimScraper } from "../source/ophim.js";
 interface BaseArgs {
   type: ContentType;
   id: string;
@@ -38,7 +40,9 @@ interface ExtendArgs extends BaseArgs {
 
 const kisskh = new KissKHScraper(Provider.KISSKH);
 const idrama = new IDramaScraper(Provider.IDRAMA);
-const providers: BaseProvider[] = [kisskh, idrama];
+const kkphim = new KkphimScraper(Provider.KKPHIM);
+const ophim = new OphimScraper(Provider.OPHIM);
+const providers: BaseProvider[] = [kisskh, idrama, kkphim, ophim];
 const tmdb = new TMDBService(Provider.TMDB);
 const tvdb = new TVDBService(Provider.TVDB);
 const logger = new Logger("ADDON");
@@ -118,7 +122,9 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
       // id | idrama:postId:season:episode
       const [prefix, idramaId, season, episode] = args.id.split(":");
       if (!idramaId) return null;
-      const { title, year } = await idrama.getStreamDetail(idramaId);
+      const detail = await idrama.getStreamDetail(idramaId);
+      if (!detail) return null;
+      const { title, year } = detail;
       const content: ContentDetail = {
         id: idramaId,
         title: title,
@@ -164,8 +170,8 @@ export async function buildCatalogHandler(
     const selectedProviders = getCatalogProvider(filteredProviders, config);
     for (const provider of selectedProviders) {
       const newMetas = args.extra.search
-        ? await provider.searchCatalog(args.id, args.type, args.extra.search)
-        : await provider.getCatalog(args.id, args.type, args.extra.skip);
+        ? await provider.searchCatalog(args, config)
+        : await provider.getCatalog(args, config);
       metas.push(...newMetas);
     }
     const metaPreviews = { metas: metas, cacheMaxAge: 4 * 60 * 60 };
@@ -229,6 +235,9 @@ export async function buildStreamHandler(
 ) {
   logger.log(`Stream | ${args.id}`);
   try {
+    // const streamKey = `streams:${args.type}:${args.id}`;
+    // const cacheStreams = cache.get(streamKey);
+    // if (cacheStreams) return cacheStreams;
     const content = await getContent(args);
     if (!content) {
       return { streams: [] };
@@ -237,21 +246,18 @@ export async function buildStreamHandler(
     const streams: Stream[] = [];
     const filteredProviders = filterProvider(providers, args.id);
     const selectedProviders = getStreamProvider(filteredProviders, config);
+    const promises = [];
     for (const provider of selectedProviders) {
-      const providerStreams = await provider.getStreams(
-        content.title,
-        content.type,
-        content.year,
-        content.season,
-        content.episode,
-        content.id,
-        content.altTitle,
-      );
-      if (providerStreams) {
-        streams.push(...providerStreams);
-      }
+      const providerStreamsPromise = provider.getStreams(content, config);
+      promises.push(providerStreamsPromise);
     }
-    return { streams: streams };
+    if (promises.length > 0) {
+      const providerStreams = (await Promise.all(promises)).flat() as Stream[];
+      streams.push(...providerStreams);
+    }
+    const streamResults = { streams: streams };
+    // cache.set(streamKey, streamResults);
+    return streamResults;
   } catch (error) {
     logger.error(`Streams handler error: ${error}`);
     return { streams: [] };
@@ -264,6 +270,9 @@ export async function buildSubtitleHandler(
 ): Promise<{ subtitles: Subtitle[] }> {
   logger.log(`Subtitles | ${args.id}`);
   try {
+    const streamKey = `subtitles:${args.type}:${args.id}`;
+    const cacheStreams = cache.get(streamKey);
+    if (cacheStreams) return cacheStreams;
     const content = await getContent(args);
     if (content == null) {
       return { subtitles: [] };

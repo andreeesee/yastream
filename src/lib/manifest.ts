@@ -10,9 +10,11 @@ import { Provider } from "../source/provider.js";
 import { getOrgin } from "../utils/domain.js";
 
 export interface UserConfig {
+  catalogs: string[];
   catalog: Provider[];
   stream: Provider[];
-  catalogs: string[];
+  nsfw: boolean;
+  info: boolean;
 }
 
 export enum Prefix {
@@ -62,6 +64,8 @@ export const defaultConfig: UserConfig = {
   catalog: [Provider.KISSKH],
   stream: [Provider.KISSKH],
   catalogs: defaultCatalogs,
+  nsfw: false,
+  info: false,
 };
 
 const defaultManifest: Manifest = {
@@ -69,7 +73,7 @@ const defaultManifest: Manifest = {
   contactEmail: "tamthai.de@gmail.com",
   version: pkg.version,
   catalogs: [],
-  resources: ["stream", "subtitles"],
+  resources: [],
   logo: `${getOrgin()}/img/yas.png`,
   idPrefixes: [
     Prefix.IMDB,
@@ -98,6 +102,7 @@ export function buildManifest(config?: UserConfig) {
   manifest.resources = [...defaultManifest.resources];
   manifest.catalogs = [...defaultManifest.catalogs];
   const catalogMap = buildCatalogMap(config.catalogs);
+
   if (config.catalog && config.catalog.length > 0) {
     manifest.resources.push("catalog");
     manifest.resources.push("meta");
@@ -108,6 +113,12 @@ export function buildManifest(config?: UserConfig) {
       }
     });
   }
+
+  if (config.stream && config.stream.length > 0) {
+    manifest.resources.push("stream");
+    manifest.resources.push("subtitles");
+  }
+
   manifest.config = [{ key: "config", type: "text", default: config64 }];
   return manifest;
 }
