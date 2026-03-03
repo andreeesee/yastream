@@ -14,20 +14,15 @@ import addonInterface, {
   buildSubtitleHandler,
 } from "./lib/addon.js";
 import { buildManifest, defaultConfig, UserConfig } from "./lib/manifest.js";
+import { Provider } from "./source/provider.js";
 import { cache } from "./utils/cache.js";
-import { envGet } from "./utils/env.js";
+import { ENV } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";
 import { getSetDecryptedSubtitle } from "./utils/subtitle.js";
-import { Provider } from "./source/provider.js";
 const { getRouter } = stremioPkg;
 
-const umami = new Umami();
-umami.init({
-  websiteId: "f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c",
-  hostUrl: "https://umami-fs.tamthai.de",
-});
 const HOST = "0.0.0.0";
-const PORT = Number(envGet("PORT")) || 55913;
+const PORT = ENV.PORT;
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, "public");
 const app = new Hono();
@@ -38,6 +33,11 @@ const logger = new Logger("SERVER");
 app.use("*", cors());
 
 // Umami Tracking for specific paths
+const umami = new Umami();
+umami.init({
+  websiteId: "f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c",
+  hostUrl: "https://umami-fs.tamthai.de",
+});
 app.on(
   "GET",
   [
@@ -51,10 +51,9 @@ app.on(
     "/subtitles/*",
   ],
   async (c, next) => {
-    const url = c.req.url;
-    umami.track({
-      url,
-    });
+    if (ENV.ENABLE_ANALYTICS) {
+      umami.track({ url: c.req.url });
+    }
     await next();
   },
 );
@@ -162,10 +161,11 @@ app.get("/subtitle/:url{.*}", async (c) => {
         "Access-Control-Allow-Origin": "*",
       });
     } else {
+      logger.error(`Missing decrypted subtitle | ${encodedUrl}`);
       return c.text("Subtitle not found or decryption failed", 404);
     }
   } catch (error) {
-    logger.error(`Error serving subtitle | error`);
+    logger.error(`Fail decrypted subtitle | ${error}`);
     return c.text("Invalid subtitle URL", 400);
   }
 });
@@ -215,7 +215,7 @@ app.use(
 
 // Monitor cache
 app.get("/dashboard", async (c) => {
-  const SECRET_KEY = envGet("DEBUG_KEY") || "debug-key";
+  const SECRET_KEY = ENV.DEBUG_KEY;
   const userKey = c.req.query("key");
 
   if (userKey !== SECRET_KEY) {

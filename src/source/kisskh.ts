@@ -12,16 +12,18 @@ import {
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
-import { envGet } from "../utils/env.js";
+import { ENV } from "../utils/env.js";
 import { matchTitle } from "../utils/fuse.js";
 import { parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getSetDecryptedSubtitle } from "../utils/subtitle.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
+import { getRpdbPoster } from "./rpdb.js";
+import { tmdb } from "./tmdb.js";
 
 export interface SearchResult {
-  id: string;
+  id: number;
   title: string;
   episodesCount: number;
   thumbnail: string;
@@ -104,6 +106,7 @@ class KissKHScraperr extends BaseProvider {
     12179, 12177, 12127, 12125, 12124, 12123, 12106, 11915, 11834, 11782, 11519,
     11518, 11517, 11511, 11509, 11436, 10942, 10761,
   ]);
+  private kisskhTmdb = new Map([[12422, "307602"]]);
 
   async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
@@ -121,22 +124,44 @@ class KissKHScraperr extends BaseProvider {
       if (type == "series") return result.episodesCount > 1;
       else return result.episodesCount == 1;
     });
-    filterResults.forEach((result) => {
-      if (!config.nsfw && this.nsfwIds.has(parseInt(result.id))) {
-        result.thumbnail = this.nsfwDefaultThumbnail;
-      }
-    });
-    const metas = filterResults.map((detail) => {
-      const meta: MetaPreview = {
-        id: `${Prefix.KISSKH}:${detail.id}`,
-        name: detail.title,
-        type: type,
-        background: detail.thumbnail,
-        poster: detail.thumbnail,
-        posterShape: "regular",
-      };
-      return meta;
-    });
+    const tmdbDetails = await Promise.all(
+      filterResults.map((item) => tmdb.searchDetailImdb(item.title, type)),
+    );
+    const metas = await Promise.all(
+      filterResults.map(async (kissItem, index) => {
+        const tmdbDetail = tmdbDetails[index];
+        let poster = kissItem.thumbnail;
+
+        // Use TMDB/RPDB if available
+        if (tmdbDetail) {
+          const sameTitleId = this.kisskhTmdb.get(kissItem.id);
+          if (sameTitleId) {
+            tmdbDetail.id = sameTitleId;
+          }
+          poster = await getRpdbPoster(
+            Prefix.TMDB,
+            tmdbDetail.id,
+            type,
+            tmdbDetail.thumbnail || kissItem.thumbnail,
+          );
+        }
+
+        // Filter nsfw
+        if (!config.nsfw && this.nsfwIds.has(kissItem.id)) {
+          poster = this.nsfwDefaultThumbnail;
+        }
+
+        const meta: MetaPreview = {
+          id: `${Prefix.KISSKH}:${kissItem.id}`,
+          name: kissItem.title,
+          type: type,
+          background: kissItem.thumbnail,
+          poster: poster,
+          posterShape: "regular",
+        };
+        return meta;
+      }),
+    );
     return metas;
   }
 
@@ -177,32 +202,60 @@ class KissKHScraperr extends BaseProvider {
       this.exploreUrl +
         `?page=${page}&type=${t}&sub=0&country=${country}&status=${completed}&order=2`,
     );
-    const promises = urls.map(async (url) => {
-      this.logger.log(`GET catalog | ${url}`);
-      return axiosGet<KisskhCatalogData>(url);
-    });
-    let datas = await Promise.all(promises);
-    const metas = datas
-      .map((data) => {
-        if (!data) return [];
-        const metas = data.data.map((kisskhMeta) => {
-          let thumbnail = kisskhMeta.thumbnail;
-          if (!config.nsfw && this.nsfwIds.has(kisskhMeta.id)) {
-            thumbnail = this.nsfwDefaultThumbnail;
+
+    // 1. Fetch all catalogs concurrently
+    const catalogDatas = await Promise.all(
+      urls.map((url) => {
+        this.logger.log(`GET catalog | ${url}`);
+        return axiosGet<KisskhCatalogData>(url);
+      }),
+    );
+
+    // 2. Filter null and flat to one list from multiple urls
+    const flatDatas = catalogDatas
+      .filter((res): res is KisskhCatalogData => !!res?.data)
+      .flatMap((res) => res.data);
+
+    // 3. Search TMDB using the flattened list
+    const tmdbDetails = await Promise.all(
+      flatDatas.map((item) => tmdb.searchDetailImdb(item.title, type)),
+    );
+
+    // 4. Map to final Meta format
+    const metas = await Promise.all(
+      flatDatas.map(async (kissItem, index) => {
+        const tmdbDetail = tmdbDetails[index];
+        let poster = kissItem.thumbnail;
+
+        // Use TMDB/RPDB if available
+        if (tmdbDetail) {
+          const sameTitleId = this.kisskhTmdb.get(kissItem.id);
+          if (sameTitleId) {
+            tmdbDetail.id = sameTitleId;
           }
-          const meta: MetaPreview = {
-            id: `${Prefix.KISSKH}:${kisskhMeta.id}`,
-            name: kisskhMeta.title,
-            type: type,
-            background: kisskhMeta.thumbnail,
-            poster: thumbnail,
-            posterShape: "regular",
-          };
-          return meta;
-        });
-        return metas;
-      })
-      .flat();
+          poster = await getRpdbPoster(
+            Prefix.TMDB,
+            tmdbDetail.id,
+            type,
+            tmdbDetail.thumbnail || kissItem.thumbnail,
+          );
+        }
+
+        // NSFW Override
+        if (!config.nsfw && this.nsfwIds.has(kissItem.id)) {
+          poster = this.nsfwDefaultThumbnail;
+        }
+
+        return {
+          id: `${Prefix.KISSKH}:${kissItem.id}`,
+          name: kissItem.title,
+          type: type,
+          background: kissItem.thumbnail,
+          poster,
+          posterShape: "regular",
+        } as MetaPreview;
+      }),
+    );
     return metas;
   }
 
@@ -443,7 +496,7 @@ class KissKHScraperr extends BaseProvider {
   }
 
   private async _getEpisode(
-    seriesId: string,
+    seriesId: number,
     type: ContentType,
     episode: number = 1,
   ) {
@@ -457,7 +510,7 @@ class KissKHScraperr extends BaseProvider {
       default:
         break;
     }
-    const detail = await this.getDetail(seriesId);
+    const detail = await this.getDetail(seriesId.toString());
     const episodeCount = detail.episodesCount;
     if (!detail || episodeCount === undefined) {
       throw new Error("No episode data found");
@@ -518,8 +571,8 @@ class KissKHScraperr extends BaseProvider {
   }
 
   private _createSubtitleUrl(originalUrl: string): string {
-    const domain = envGet("DOMAIN") || "localhost";
-    const port = envGet("PORT") || "55913";
+    const domain = ENV.DOMAIN;
+    const port = ENV.PORT;
     const protocol = domain === "localhost" ? "http" : "https";
     const baseUrl =
       domain === "localhost"

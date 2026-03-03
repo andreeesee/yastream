@@ -1,7 +1,6 @@
 import Fuse, { FuseResult, IFuseOptions } from "fuse.js";
-import { SearchResult } from "../source/kisskh.js";
+import { token_set_ratio } from "fuzzball";
 import { Logger } from "./logger.js";
-import { extract, token_set_ratio } from "fuzzball";
 
 interface SearchItem<T> {
   original: T;
@@ -14,7 +13,7 @@ interface BestMatch<T> {
 
 const logger = new Logger("FUSE");
 
-interface Search {
+export interface Search {
   title: string;
 }
 /**
@@ -73,7 +72,7 @@ export function matchTitle<T extends Search>(
   }
   const candidateTitle = best.fuseResult.item.normalizedTitle;
   const tokenScore = token_set_ratio(best.queryUsed, candidateTitle);
-  const MIN_TOKEN_SCORE = 80;
+  const MIN_TOKEN_SCORE = 85;
   if (tokenScore < MIN_TOKEN_SCORE) {
     throw new Error(
       `Token-set score too low (${tokenScore}) | "${best.queryUsed}" -> "${candidateTitle}"`,
@@ -99,7 +98,7 @@ function createSearchList(title: string, season?: number, year?: number) {
   return searchTitles;
 }
 
-const normalize = (str: string) => {
+export const normalize = (str: string) => {
   return str
     .toLowerCase()
     .replace(/(\d+)(st|nd|rd|th)/g, "$1") // fix 2nd season -> 2 season
@@ -109,8 +108,17 @@ const normalize = (str: string) => {
     .trim();
 };
 
-function tokenSetScore(a: string, b: string): number {
-  const cleanA = normalize(a);
-  const cleanB = normalize(b);
-  return token_set_ratio(cleanA, cleanB); // 0–100
+const YEAR_SYNTAX_REGEX = /\s*\((\d{4})\)\s*/g;
+
+export function extractTitleYear(rawTitle: string) {
+  let year: number | undefined;
+
+  const cleanTitle = rawTitle
+    .replace(YEAR_SYNTAX_REGEX, (match, yearGroup) => {
+      year = parseInt(yearGroup);
+      return ""; // Remove the syntax from the title
+    })
+    .trim();
+
+  return { title: cleanTitle, year };
 }

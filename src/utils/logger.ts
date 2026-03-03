@@ -1,4 +1,4 @@
-import { envGet } from "./env.js";
+import { ENV } from "./env.js";
 type LogLevel = "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "NONE";
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   TRACE: 0,
@@ -10,7 +10,7 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 };
 export class Logger {
   private name: string;
-  private envLevel = (envGet("LOG_LEVEL") || "INFO").toUpperCase() as LogLevel;
+  private envLevel = ENV.LOG_LEVEL as LogLevel;
   private currentPriority: number = LOG_LEVEL_PRIORITY[this.envLevel] ?? 2;
 
   constructor(name: string) {

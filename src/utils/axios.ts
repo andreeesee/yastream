@@ -19,3 +19,21 @@ export async function axiosGet<T>(
   }
   return null;
 }
+
+export async function axiosHead<T>(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<boolean> {
+  const urlKey = `head:url:${url}`;
+  const cacheData = cache.get(urlKey);
+  if (cacheData) return cacheData;
+  try {
+    await axios.head(url, config);
+    cache.set(urlKey, true, 8 * 60 * 60 * 1000);
+    return true;
+  } catch (error) {
+    logger.error(`Fail to head | ${url}, ${error}`);
+  }
+  cache.set(urlKey, false, 4 * 60 * 60 * 1000);
+  return false;
+}

@@ -85,7 +85,7 @@ const defaultManifest: Manifest = {
   types: ["movie", "series"],
   name: "yastream",
   description:
-    "Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Powered by TMDB and TVDB for metadata",
+    "Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with languages selection. Powered by TMDB and TVDB for metadata",
   behaviorHints: {
     adult: false,
     p2p: false,

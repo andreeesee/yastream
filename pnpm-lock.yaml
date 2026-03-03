@@ -35,6 +35,9 @@ importers:
       stremio-addon-sdk:
         specifier: 1.6.10
         version: 1.6.10
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@types/crypto-js':
         specifier: ^4.2.2
@@ -737,6 +740,9 @@ packages:
   yn@3.1.1:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
 
@@ -1457,3 +1463,5 @@ snapshots:
       webidl-conversions: 3.0.1
 
   yn@3.1.1: {}
+
+  zod@4.3.6: {}

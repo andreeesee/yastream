@@ -33,7 +33,7 @@
             </div>
             <h2>Yet Another Stream</h2>
             <h3 id="versionTag" style="cursor: pointer; text-decoration: underline dotted;">v{{VERSION}}</h3>
-            <p>Stream Asian Dramas, Series and Movies directly from multiple source. Powered by <a target="_blank"
+            <p>Stream Asian Dramas, Series and Movies directly from multiple sources. Powered by <a target="_blank"
                     rel="noopener noreferrer" href="https://themoviedb.org">TMDB</a> and <a target="_blank"
                     rel="noopener noreferrer" href="https://www.thetvdb.com">TVDB</a> for metadata.</p>
         </header>
@@ -66,7 +66,7 @@
                     <option value="kisskh.series.Taiwanese">Taiwanese series</option>
                 </select>
                 <div class="config-item">
-                    <label>idrama | Khmer</label>
+                    <label class="config-label">idrama | Khmer </label>
                     <input type="checkbox" id="catalog.idrama" />
                 </div>
                 <h3 class="configure-type">Stream and subtitles</h3>
@@ -79,11 +79,12 @@
                     <input type="checkbox" id="stream.idrama" />
                 </div>
                 <div class="config-item">
-                    <label>kkphim | Vietnamese (sometimes has AD, need Vietnamese VPN or Mediaflow-proxy)</label>
+                    <label>kkphim | Vietnamese (some movies have DUB)
+                        <br />sometimes has AD, require Vietnamese VPN/Mediaflow-proxy</label>
                     <input type="checkbox" id="stream.kkphim" />
                 </div>
                 <div class="config-item">
-                    <label>ophim1 | Vietnamese</label>
+                    <label>ophim&nbsp; | Vietnamese</label>
                     <input type="checkbox" id="stream.ophim" />
                 </div>
                 <h3 class="configure-type">Filter and display</h3>
@@ -94,7 +95,7 @@
                 <div class="config-item">
                     <label>Show detail stream information
                         <br />e.g. 1 hours 1 minutes 0.8GB 720p
-                        <br />(slower result when checked)
+                        <br />(slower result when enabled)
                     </label>
                     <input type="checkbox" id="info" />
                 </div>

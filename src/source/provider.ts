@@ -7,10 +7,10 @@ import {
   Subtitle,
 } from "stremio-addon-sdk";
 import { Prefix, UserConfig } from "../lib/manifest.js";
+import { ENV } from "../utils/env.js";
 import { getDisplayResolution, StreamInfo } from "../utils/info.js";
 import { Logger } from "../utils/logger.js";
 import { ContentDetail } from "./meta.js";
-import { envGet } from "../utils/env.js";
 
 export enum Provider {
   KISSKH = "kisskh",
@@ -42,7 +42,7 @@ export abstract class BaseProvider {
   constructor(name: Provider) {
     this.name = name;
     this.logger = new Logger(name);
-    this.displayName = `${envGet("DISPLAY_NAME") || "yastream"}\n${name}`;
+    this.displayName = `${ENV.DISPLAY_NAME}\n${name}`;
   }
 
   abstract searchCatalog(

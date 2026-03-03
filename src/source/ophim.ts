@@ -12,6 +12,7 @@ import { parseStreamInfo } from "../utils/info.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
 import { cache } from "../utils/cache.js";
+import { matchTitle, Search } from "../utils/fuse.js";
 
 interface OphimSearchResponse {
   data: {
@@ -20,6 +21,7 @@ interface OphimSearchResponse {
 }
 interface OphimMovie {
   name: string;
+  origin_name: string;
   year: number;
   slug: string;
   poster_url: string;
@@ -41,7 +43,12 @@ interface OphimEpisodeItem {
 
 export class OphimScraper extends BaseProvider {
   readonly baseUrl = "https://ophim1.com";
-  supportedPrefix = [Prefix.IMDB, Prefix.TMDB];
+  readonly supportedPrefix: Prefix[] = [
+    Prefix.IMDB,
+    Prefix.TMDB,
+    Prefix.TVDB,
+    Prefix.KISSKH,
+  ];
 
   async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
@@ -120,10 +127,19 @@ export class OphimScraper extends BaseProvider {
     const data = await axiosGet<OphimSearchResponse>(searchUrl);
     if (!data) return null;
     if (data.data.items.length === 0) return null;
-    // filter by year no FUSE
-    const slug = data.data.items.find((item) => {
+    const items = data.data.items.filter((item) => {
       return item.year == year;
-    })?.slug;
+    });
+    const searchItems = items.map((item) => {
+      const search: OphimMovie & Search = {
+        ...item,
+        title: item.origin_name,
+      };
+      return search;
+    });
+    const detail = matchTitle(searchItems, title, year)[0];
+    if (!detail) return null;
+    const slug = detail.slug;
     const detailUrl = `${this.baseUrl}/v1/api/phim/${slug}`;
     this.logger.log(`GET detail | ${detailUrl}`);
     const movie = await axiosGet<OphimDetailResponse>(detailUrl);

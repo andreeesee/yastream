@@ -6,16 +6,19 @@ import {
   ContentType,
   MetaDetail,
   MetaPreview,
-  Stream,
+  ShortManifestResource,
   Subtitle,
 } from "stremio-addon-sdk";
 import KissKHScraper from "../source/kisskh.js";
-import TMDBService from "../source/tmdb.js";
+// import TMDBService from "../source/tmdb.js";
 
 import { IDramaScraper } from "../source/idrama.js";
+import { KkphimScraper } from "../source/kkphim.js";
 import { ContentDetail } from "../source/meta.js";
+import { OphimScraper } from "../source/ophim.js";
 import { BaseProvider, Provider } from "../source/provider.js";
-import TVDBService from "../source/tvdb.js";
+import { tmdb } from "../source/tmdb.js";
+import { tvdb } from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
 import { Logger } from "../utils/logger.js";
 import {
@@ -24,8 +27,7 @@ import {
   Prefix,
   UserConfig,
 } from "./manifest.js";
-import { KkphimScraper } from "../source/kkphim.js";
-import { OphimScraper } from "../source/ophim.js";
+import { extractTitleYear } from "../utils/fuse.js";
 interface BaseArgs {
   type: ContentType;
   id: string;
@@ -43,8 +45,6 @@ const idrama = new IDramaScraper(Provider.IDRAMA);
 const kkphim = new KkphimScraper(Provider.KKPHIM);
 const ophim = new OphimScraper(Provider.OPHIM);
 const providers: BaseProvider[] = [kisskh, idrama, kkphim, ophim];
-const tmdb = new TMDBService(Provider.TMDB);
-const tvdb = new TVDBService(Provider.TVDB);
 const logger = new Logger("ADDON");
 
 async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
@@ -140,9 +140,11 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
       const [prefix, kisskhId, season, episode] = args.id.split(":");
       if (!kisskhId) return null;
       const { title, releaseDate } = await kisskh.getDetail(kisskhId);
+      const extracted = extractTitleYear(title);
+      const pureTitle = extracted.title;
       const content: ContentDetail = {
         id: kisskhId,
-        title: title,
+        title: pureTitle,
         year: new Date(releaseDate).getFullYear(),
         type: "series",
         season: season ? parseInt(season) : 1,
@@ -162,19 +164,24 @@ export async function buildCatalogHandler(
   // id | idrama
   logger.log(`Catalog | ${args.id}`);
   try {
-    const catalogKey = `catalog:${args.type}:${args.id}:${args.extra.skip}:${args.extra.search}`;
+    const catalogKey = `catalog:${args.type}:${args.id}:${args.extra.skip}:${args.extra.search}:${config.nsfw}`;
     const cacheCatalog = cache.get(catalogKey);
     if (cacheCatalog) return cacheCatalog;
-    let metas: MetaPreview[] = [];
-    const filteredProviders = filterProvider(providers, args.id);
-    const selectedProviders = getCatalogProvider(filteredProviders, config);
-    for (const provider of selectedProviders) {
-      const newMetas = args.extra.search
-        ? await provider.searchCatalog(args, config)
-        : await provider.getCatalog(args, config);
-      metas.push(...newMetas);
-    }
-    const metaPreviews = { metas: metas, cacheMaxAge: 4 * 60 * 60 };
+    const filteredProviders = filterProvider(
+      providers,
+      args.id,
+      config,
+      "catalog",
+    );
+    const metas = await Promise.all(
+      filteredProviders.map((provider) => {
+        if (args.extra.search) {
+          return provider.searchCatalog(args, config);
+        }
+        return provider.getCatalog(args, config);
+      }),
+    );
+    const metaPreviews = { metas: metas.flat(), cacheMaxAge: 4 * 60 * 60 };
     cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
     return metaPreviews;
   } catch (error) {
@@ -212,9 +219,13 @@ export async function buildMetaHandler(
     for (const pref of notCustomPrefix) {
       if (id.startsWith(pref)) return defaultConfig;
     }
-    const filteredProviders = filterProvider(providers, args.id);
-    const selectedProviders = getCatalogProvider(filteredProviders, config);
-    for (const provider of selectedProviders) {
+    const filteredProviders = filterProvider(
+      providers,
+      args.id,
+      config,
+      "meta",
+    );
+    for (const provider of filteredProviders) {
       const meta = await provider.getMeta(content.id || id, args.type);
       if (meta) {
         const metaDetail = { meta: meta || defaultMeta.meta };
@@ -235,28 +246,26 @@ export async function buildStreamHandler(
 ) {
   logger.log(`Stream | ${args.id}`);
   try {
-    // const streamKey = `streams:${args.type}:${args.id}`;
-    // const cacheStreams = cache.get(streamKey);
-    // if (cacheStreams) return cacheStreams;
+    const streamKey = `streams:${args.type}:${args.id}:${JSON.stringify(config.stream)}:${config.info}`;
+    const cacheStreams = cache.get(streamKey);
+    if (cacheStreams) return cacheStreams;
     const content = await getContent(args);
     if (!content) {
       return { streams: [] };
     }
-    // Search for streams using the TMDB title
-    const streams: Stream[] = [];
-    const filteredProviders = filterProvider(providers, args.id);
-    const selectedProviders = getStreamProvider(filteredProviders, config);
-    const promises = [];
-    for (const provider of selectedProviders) {
-      const providerStreamsPromise = provider.getStreams(content, config);
-      promises.push(providerStreamsPromise);
-    }
-    if (promises.length > 0) {
-      const providerStreams = (await Promise.all(promises)).flat() as Stream[];
-      streams.push(...providerStreams);
-    }
-    const streamResults = { streams: streams };
-    // cache.set(streamKey, streamResults);
+    const filteredProviders = filterProvider(
+      providers,
+      args.id,
+      config,
+      "stream",
+    );
+    const streams = await Promise.all(
+      filteredProviders.map(async (provider) => {
+        return await provider.getStreams(content, config);
+      }),
+    );
+    const streamResults = { streams: streams.flat() };
+    cache.set(streamKey, streamResults);
     return streamResults;
   } catch (error) {
     logger.error(`Streams handler error: ${error}`);
@@ -277,47 +286,53 @@ export async function buildSubtitleHandler(
     if (content == null) {
       return { subtitles: [] };
     }
-    const title = content.title;
-    const type = content.type;
-    const year = content.year;
-    const season = content.season;
-    const episode = content.episode;
-    const subtitles: Subtitle[] = [];
-    const filteredProviders = filterProvider(providers, args.id);
-    const selectedProviders = getStreamProvider(filteredProviders, config);
-    for (const provider of selectedProviders) {
-      const subtitleKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
-      const cacheSubtitles = cache.get(subtitleKey);
-      if (cacheSubtitles) return { subtitles: cacheSubtitles || [] };
-      const providerSubtitles = await provider.getSubtitles(content);
-      if (providerSubtitles) {
-        subtitles.push(...providerSubtitles);
-      }
-    }
-    return { subtitles: subtitles };
+    const { type, season, episode } = content;
+    const filteredProviders = filterProvider(
+      providers,
+      args.id,
+      config,
+      "subtitles",
+    );
+    const results = await Promise.allSettled(
+      filteredProviders.map(async (provider) => {
+        const subtitleKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
+        const cacheSubtitles: Subtitle[] = cache.get(subtitleKey);
+        if (cacheSubtitles) return cacheSubtitles;
+        const providerSubtitles = await provider.getSubtitles(content);
+        if (providerSubtitles) return providerSubtitles;
+        return [];
+      }),
+    );
+    const subtitles = results
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => r.value)
+      .flat();
+    return { subtitles: subtitles.flat() };
   } catch (error) {
     logger.error(`Subtitles handler error: ${error}`);
     return { subtitles: [] };
   }
 }
 
-function filterProvider(providers: BaseProvider[], id: string) {
+function filterProvider(
+  providers: BaseProvider[],
+  id: string,
+  config: UserConfig,
+  resource: ShortManifestResource,
+) {
+  let configResource: Provider[] = [];
+  if (resource === "catalog" || resource === "meta") {
+    configResource = config.catalog;
+  } else if (resource === "stream" || resource === "subtitles") {
+    configResource = config.stream;
+  }
   return providers.filter((provider) => {
-    return provider.supportedPrefix.some((prefix) => {
-      return id.startsWith(prefix);
-    });
-  });
-}
-
-function getStreamProvider(providers: BaseProvider[], config: UserConfig) {
-  return providers.filter((provider) => {
-    return config.stream.includes(provider.name);
-  });
-}
-
-function getCatalogProvider(providers: BaseProvider[], config: UserConfig) {
-  return providers.filter((provider) => {
-    return config.catalog.includes(provider.name);
+    return (
+      configResource.includes(provider.name) &&
+      provider.supportedPrefix.some((prefix) => {
+        return id.startsWith(prefix);
+      })
+    );
   });
 }
 

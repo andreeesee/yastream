@@ -1,4 +1,10 @@
-# v0.2.3 2026-03-01
+# v0.2.5 2026-03-03
+
+- Support rpdb poster, add fallback poster if not found
+- Finding stream for kkphim and ophim more reliable
+- Clean up source, add zod to type check
+
+# v0.2.4 2026-03-01
 
 - Add Vietnamese providers:
   1. kkphim (sometimes has AD, need Vietnamese VPN/Mediaflow-proxy)

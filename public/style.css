@@ -6,6 +6,7 @@
   --background: #393939;
   --secondary-background: #2a2a2a;
   --foreground: #fff1e3;
+  --secondary-foreground: #fff1e390;
   --rounded-md: 10px;
   --margin-md: 1rem;
   --xxxs: 0.1rem;
@@ -81,8 +82,8 @@ p {
 }
 .configure-type {
   text-align: left;
-  border-bottom: 2px solid var(--foreground);
-  padding-bottom: var(--sm);
+  border-bottom: 2px solid var(--secondary-foreground);
+  padding-bottom: var(--xxs);
   margin-top: var(--md);
 }
 .config-item {
@@ -91,6 +92,9 @@ p {
   justify-content: space-between;
   align-items: left;
   padding-top: var(--md);
+}
+.config-item label {
+  margin-left: var(--xs);
 }
 .config-item input {
   margin-left: var(--md);
@@ -142,16 +146,16 @@ p {
 
 /* Install */
 .grid-btn {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: space-between;
   gap: 1.2rem;
 }
 .btn {
-  display: inline-block;
   text-decoration: none;
   border: none;
   border-radius: var(--rounded-md);
   padding: 12px 24px;
+  flex: 1;
   margin-top: var(--margin-md);
   font-size: 1em;
   font-weight: 600;

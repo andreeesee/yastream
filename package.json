@@ -1,6 +1,6 @@
 {
   "name": "yastream",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Stream asian movies, series and dramas with kisskh",
   "scripts": {
     "start": "node --env-file=.env dist/server.js",
@@ -20,7 +20,8 @@
     "fuse.js": "^7.1.0",
     "fuzzball": "^2.2.3",
     "hono": "^4.12.2",
-    "stremio-addon-sdk": "1.6.10"
+    "stremio-addon-sdk": "1.6.10",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",

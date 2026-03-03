@@ -14,6 +14,7 @@ import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getProxyLink } from "../utils/mediaflowproxy.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
+import { matchTitle, Search } from "../utils/fuse.js";
 
 interface KkphimSearchResponse {
   data: {
@@ -22,6 +23,7 @@ interface KkphimSearchResponse {
 }
 interface KkphimMovie {
   name: string;
+  origin_name: string;
   slug: string;
   poster_url: string;
   year: number;
@@ -42,7 +44,12 @@ interface KkphimEpisodeItem {
 
 export class KkphimScraper extends BaseProvider {
   readonly baseUrl = "https://phimapi.com";
-  supportedPrefix = [Prefix.IMDB, Prefix.TMDB];
+  readonly supportedPrefix: Prefix[] = [
+    Prefix.IMDB,
+    Prefix.TMDB,
+    Prefix.TVDB,
+    Prefix.KISSKH,
+  ];
 
   async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
@@ -105,6 +112,7 @@ export class KkphimScraper extends BaseProvider {
       const streamPromises = episodeDetails.map(async (item, index) => {
         const link = item.link_m3u8;
         const proxyLink = getProxyLink(link);
+        this.logger.log(`Stream Url | ${proxyLink}`);
         const info = config.info ? await parseStreamInfo(proxyLink) : undefined;
         const formatTitle = this.formatStreamTitle(
           `${name} | ${index === 0 ? "Phụ đề" : "Thuyết Minh"}`,
@@ -147,10 +155,19 @@ export class KkphimScraper extends BaseProvider {
     const data = await axiosGet<KkphimSearchResponse>(searchUrl);
     if (!data) return null;
     if (!data.data.items) return null;
-    // filter by year no FUSE
-    const slug = data.data.items.find((item) => {
+    const items = data.data.items.filter((item) => {
       return item.year == year;
-    })?.slug;
+    });
+    const searchItems = items.map((item) => {
+      const search: KkphimMovie & Search = {
+        ...item,
+        title: item.origin_name,
+      };
+      return search;
+    });
+    const detail = matchTitle(searchItems, title, year)[0];
+    if (!detail) return null;
+    const slug = detail.slug;
     const detailUrl = `${this.baseUrl}/phim/${slug}`;
     this.logger.log(`GET detail | ${detailUrl}`);
     const movie = await axiosGet<KkphimShowResponse>(detailUrl);

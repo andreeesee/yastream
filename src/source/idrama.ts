@@ -11,10 +11,10 @@ import {
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
+import { ENV } from "../utils/env.js";
 import { parseStreamInfo } from "../utils/info.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
-import { envGet } from "../utils/env.js";
 
 interface IDramaItem {
   id: string;
@@ -139,7 +139,10 @@ export class IDramaScraper extends BaseProvider {
     return meta;
   }
 
-  async getStreams(content: ContentDetail): Promise<Stream[]> {
+  async getStreams(
+    content: ContentDetail,
+    config: UserConfig,
+  ): Promise<Stream[]> {
     const { title, type, year, season, episode, id, altTitle } = content;
     try {
       if (!id) return [];
@@ -156,12 +159,8 @@ export class IDramaScraper extends BaseProvider {
       const { urls } = detail;
       this.logger.debug(`Title ${title}`);
       const url = episode ? urls[episode - 1] : urls[0];
-      let info;
-      try {
-        info = await parseStreamInfo(url!);
-      } catch (error) {
-        this.logger.error(`Fail to parse stream info | ${error}`);
-      }
+      if (!url) return [];
+      const info = config.info ? await parseStreamInfo(url) : undefined;
       const formatTitle = this.formatStreamTitle(
         title,
         year,
@@ -173,7 +172,7 @@ export class IDramaScraper extends BaseProvider {
       const streams: Stream[] = [
         {
           url: url,
-          name: envGet("DISPLAY_NAME") || "yastream",
+          name: ENV.DISPLAY_NAME,
           title: `${formatTitle}`,
           behaviorHints: {
             notWebReady: true,

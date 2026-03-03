@@ -1,19 +1,19 @@
-import { envGet } from "./env.js";
+import { ENV } from "./env.js";
 
 export function getHost() {
-  const domain = envGet("DOMAIN");
+  const domain = ENV.DOMAIN;
   if (domain === "localhost") {
-    return `${domain}:${envGet("PORT")}`;
+    return `${domain}:${ENV.PORT}`;
   } else {
     return `${domain}`;
   }
 }
 
 export function getOrgin() {
-  const domain = envGet("DOMAIN");
+  const domain = ENV.DOMAIN;
   if (domain === "localhost") {
-    return `http://${domain}:${envGet("PORT")}`;
+    return `http://${getHost()}`;
   } else {
-    return `https://${domain}`;
+    return `https://${getHost()}`;
   }
 }

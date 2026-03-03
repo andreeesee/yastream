@@ -1,9 +1,10 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { ContentType } from "stremio-addon-sdk";
 import { cache } from "../utils/cache.js";
-import { envGetRequired } from "../utils/env.js";
+import { ENV } from "../utils/env.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { BaseMeta, ContentDetail } from "./meta.js";
+import { Provider } from "./provider.js";
 
 interface TvdbMovieResult {
   data: {
@@ -47,7 +48,7 @@ interface TvdbSeriesResult {
   };
 }
 class TVDBService extends BaseMeta {
-  private apiKey: string = envGetRequired("TVDB_API_KEY");
+  private apiKey: string = ENV.TVDB_API_KEY;
   private baseUrl: string = "https://api4.thetvdb.com/v4";
 
   async getDetailTvdb(
@@ -182,4 +183,4 @@ class TVDBService extends BaseMeta {
   }
 }
 
-export default TVDBService;
+export const tvdb = new TVDBService(Provider.TVDB);
