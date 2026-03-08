@@ -88,6 +88,7 @@ const ONETOUCHTV_CATALOG: Record<string, string> = {
 };
 
 const ONETOUCHTV_LANGUAGE: Record<string, CountryCode> = {
+  English: CountryCode.en,
   Türk: CountryCode.tr,
   Española: CountryCode.es,
   中文: CountryCode.zh,
