@@ -1,14 +1,14 @@
-import axios from "axios";
-import * as cheerio from "cheerio";
 import {
-  Args,
+  CatalogHandlerArgs,
   ContentType,
   MetaDetail,
   MetaPreview,
   MetaVideo,
   Stream,
   Subtitle,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
+import axios from "axios";
+import * as cheerio from "cheerio";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
@@ -82,6 +82,7 @@ class KissKHScraperr extends BaseProvider {
     Prefix.TMDB,
     Prefix.TVDB,
     Prefix.KISSKH,
+    Prefix.ONETOUCHTV,
   ];
   private readonly pageSize = 20;
   private readonly subGuid: string = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
@@ -101,17 +102,24 @@ class KissKHScraperr extends BaseProvider {
   };
   private tokenJsCode: string | null = null;
   private nsfwIds = new Set([
-    12519, 12518, 12517, 12516, 12515, 12514, 12513, 12510, 12504, 12503, 12495,
-    12491, 12480, 12413, 12378, 12332, 12331, 12330, 12314, 12285, 12284, 12200,
-    12179, 12177, 12127, 12125, 12124, 12123, 12106, 11915, 11834, 11782, 11519,
-    11518, 11517, 11511, 11509, 11436, 10942, 10761,
+    12563, 12519, 12518, 12517, 12516, 12515, 12514, 12513, 12510, 12504, 12503,
+    12495, 12491, 12480, 12413, 12378, 12332, 12331, 12330, 12314, 12285, 12284,
+    12200, 12179, 12177, 12129, 12127, 12125, 12124, 12123, 12106, 11915, 11834,
+    11782, 11544, 11519, 11518, 11517, 11511, 11509, 11436, 10942, 10761,
   ]);
   private kisskhTmdb = new Map([[12422, "307602"]]);
 
-  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async searchCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
     const search = extra.search;
     this.logger.log(`Search | ${search}`);
+    if (!search) {
+      this.logger.error("Search term is required for search");
+      return [];
+    }
     const searchResults = await this.searchContent(
       search,
       type,
@@ -157,7 +165,6 @@ class KissKHScraperr extends BaseProvider {
           type: type,
           background: kissItem.thumbnail,
           poster: poster,
-          posterShape: "regular",
         };
         return meta;
       }),
@@ -172,7 +179,10 @@ class KissKHScraperr extends BaseProvider {
    * @param skip
    * @returns
    */
-  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async getCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
     const skip = extra.skip;
     let t = this.TYPE[type];
@@ -246,57 +256,71 @@ class KissKHScraperr extends BaseProvider {
           poster = this.nsfwDefaultThumbnail;
         }
 
-        return {
-          id: `${Prefix.KISSKH}:${kissItem.id}`,
+        let id = `${Prefix.KISSKH}:${kissItem.id}`;
+        // if (tmdbDetail?.imdbId) {
+        //   id = `${tmdbDetail.imdbId}`;
+        // }
+        const metaPreview: MetaDetail = {
+          id: id,
           name: kissItem.title,
           type: type,
           background: kissItem.thumbnail,
           poster,
-          posterShape: "regular",
-        } as MetaPreview;
+        };
+
+        if (type === "movie") {
+          metaPreview.behaviorHints = {
+            defaultVideoId: `${id}:1:1`,
+          };
+          return metaPreview;
+        }
+        return metaPreview;
       }),
     );
     return metas;
   }
 
-  async getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
-    const detail = await this.getDetail(id);
+  async getMeta(
+    content: ContentDetail,
+    type: ContentType,
+  ): Promise<MetaDetail | null> {
+    const detail = await this.getDetail(content.id);
+    const year = new Date(detail.releaseDate).getFullYear();
+    const tmdbDetail = await tmdb.searchDetailImdb(detail.title, type, year);
+    if (tmdbDetail) {
+      detail.description = tmdbDetail.overview || detail.description;
+    }
     const season = 1;
     const date = new Date(detail.releaseDate).toISOString();
-    const videos: MetaVideo[] = detail.episodes.map((episode, index) => {
+    const videos: MetaVideo[] = detail.episodes.map((_, index) => {
       const episodeNum = index + 1;
-      if (type === "series") {
-        return {
-          id: `kisskh:${detail.id.toString()}:${season}:${episodeNum}`,
-          released: date,
-          title: detail.title,
-          type: type,
-          description: detail.description,
-          thumbnail: detail.thumbnail,
-          background: detail.thumbnail,
-          season: season,
-          episode: index + 1,
-        };
-      } else {
-        return {
-          id: `kisskh:${detail.id.toString()}:${season}:${episodeNum}`,
-          released: date,
-          title: detail.title,
-          type: type,
-          description: detail.description,
-          thumbnail: detail.thumbnail,
-          background: detail.thumbnail,
-          season: season,
-          episode: index + 1,
-        };
-      }
+      let id = `kisskh:${detail.id}:${season}:${episodeNum}`;
+      // if (tmdbDetail?.imdbId) {
+      //   id = `${tmdbDetail.imdbId}:${season}:${episodeNum}`;
+      // }
+      // In Kisskh sometimes movie also has multiple episodes
+      return {
+        id: id,
+        released: date,
+        title: detail.title,
+        type: type,
+        description: detail.description,
+        thumbnail: detail.thumbnail,
+        background: detail.thumbnail,
+        season: season,
+        episode: episodeNum,
+      };
     });
+    let metaId = `${Prefix.KISSKH}:${detail.id}`;
+    // if (tmdbDetail?.imdbId) {
+    //   metaId = `${tmdbDetail.imdbId}`;
+    // }
     const meta: MetaDetail = {
-      id: `kisskh:${detail.id}`,
+      id: metaId,
       name: detail.title,
+      logo: tmdbDetail?.logo || "",
       poster: detail.thumbnail,
       background: detail.thumbnail,
-      posterShape: "regular",
       type: type,
       description: detail.description,
       country: detail.country,
@@ -312,16 +336,9 @@ class KissKHScraperr extends BaseProvider {
   ): Promise<Stream[]> {
     const { title, type, year, season, episode, id, altTitle } = content;
     try {
-      if (id) {
-        const streamKey = `streams:kisskh:${type}:${id}:${season}:${episode}`;
-        const cacheStreams = cache.get(streamKey);
-        if (cacheStreams) return cacheStreams;
-      }
-      const streamKey = `streams:kisskh:${type}:${id}:${season}:${episode}`;
+      const streamKey = `streams:${this.name}:${type}:${id}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
-      if (cacheStreams !== null) {
-        return cacheStreams;
-      }
+      if (cacheStreams) return cacheStreams;
 
       const searchResult = await this.searchContent(
         title,
@@ -426,7 +443,7 @@ class KissKHScraperr extends BaseProvider {
         title: formatTitle,
         behaviorHints: {
           notWebReady: true,
-          group: `yastream-kisskh`,
+          bingeGroup: "yastream-kisskh",
         },
       },
     ];
@@ -435,7 +452,11 @@ class KissKHScraperr extends BaseProvider {
 
   private async _getToken(episodeId: string, uid: string): Promise<string> {
     if (!this.tokenJsCode) {
-      const { data: html } = await axios.get(this.baseUrl + "/index.html");
+      const html = await axiosGet<string>(this.baseUrl + "/index.html");
+      if (!html)
+        throw new Error(
+          `[KISSKH] Failed to fetch index.html for token generation`,
+        );
       const $ = cheerio.load(html);
       const scriptSrc = $('script[src*="common"]').attr("src");
       const { data: jsCode } = await axios.get(this.baseUrl + "/" + scriptSrc);
@@ -549,7 +570,7 @@ class KissKHScraperr extends BaseProvider {
       const lang = iso639FromCountryCode(subtitleData.land as CountryCode);
       const src = subtitleData.src;
       const subtitle: Subtitle = {
-        id: index.toString(),
+        id: `${this.name}-${index.toString()}`,
         lang: lang,
         url: src,
       };

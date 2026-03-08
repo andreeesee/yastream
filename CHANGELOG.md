@@ -1,3 +1,9 @@
+# v0.3.0 2026-03-07
+
+- Add onetouchtv to provider list for catalog and stream
+- Support autoplay from same stream in series
+- Migrate to new stremio-addon/sdk
+
 # v0.2.5 2026-03-03
 
 - Support rpdb poster, add fallback poster if not found

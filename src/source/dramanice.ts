@@ -1,30 +1,36 @@
-import CryptoJS from "crypto-js";
-import { BaseProvider } from "./provider.js";
 import {
+  CatalogHandlerArgs,
   ContentType,
-  Stream,
-  MetaPreview,
   MetaDetail,
+  MetaPreview,
+  Stream,
   Subtitle,
-  Args,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
+import CryptoJS from "crypto-js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { ContentDetail } from "./meta.js";
+import { BaseProvider } from "./provider.js";
 
 export class DramaniceScraper extends BaseProvider {
   supportedPrefix: Prefix[] = [Prefix.IMDB, Prefix.TMDB, Prefix.TVDB];
   baseUrl = "https://dramanicee.lat";
 
-  async getStreams(content: ContentDetail): Promise<Stream[]> {
-    throw new Error("Method not implemented.");
-  }
   async searchCatalog(): Promise<MetaPreview[]> {
     throw new Error("Method not implemented.");
   }
-  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async getCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     throw new Error("Method not implemented.");
   }
-  getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
+  async getMeta(
+    content: ContentDetail,
+    type: ContentType,
+  ): Promise<MetaDetail | null> {
+    throw new Error("Method not implemented.");
+  }
+  async getStreams(content: ContentDetail): Promise<Stream[]> {
     throw new Error("Method not implemented.");
   }
   getSubtitles(content: ContentDetail): Promise<Subtitle[]> {

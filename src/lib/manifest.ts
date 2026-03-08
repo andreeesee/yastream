@@ -1,10 +1,10 @@
-// Docs: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md
+// Docs: https://github.com/Stremio/@stremio-addon/sdk/blob/master/docs/api/responses/manifest.md
 import {
   ContentType,
   Manifest,
   ManifestCatalog,
   ManifestExtra,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
 import pkg from "../../package.json" with { type: "json" };
 import { Provider } from "../source/provider.js";
 import { getOrgin } from "../utils/domain.js";
@@ -23,6 +23,7 @@ export enum Prefix {
   TVDB = "tvdb",
   IDRAMA = "idrama",
   KISSKH = "kisskh",
+  ONETOUCHTV = "onetouchtv",
 }
 
 export const defaultCatalogs = [
@@ -33,6 +34,8 @@ export const defaultCatalogs = [
   `${Prefix.KISSKH}.series.Chinese`,
   `${Prefix.KISSKH}.series.Search`,
   `${Prefix.KISSKH}.movie.Search`,
+
+  `${Prefix.ONETOUCHTV}.series.Search`,
 ];
 
 function buildCatalogMap(catalogs: string[] = defaultCatalogs) {
@@ -81,6 +84,7 @@ const defaultManifest: Manifest = {
     Prefix.TVDB,
     Prefix.IDRAMA,
     Prefix.KISSKH,
+    Prefix.ONETOUCHTV,
   ],
   types: ["movie", "series"],
   name: "yastream",

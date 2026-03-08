@@ -1,11 +1,11 @@
 import {
-  Args,
+  CatalogHandlerArgs,
   ContentType,
   MetaDetail,
   MetaPreview,
   Stream,
   Subtitle,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
@@ -51,17 +51,26 @@ export class KkphimScraper extends BaseProvider {
     Prefix.KISSKH,
   ];
 
-  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async searchCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
     const search = extra.search;
     throw new Error("Method not implemented.");
   }
 
-  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async getCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     throw new Error("Method not implemented.");
   }
 
-  getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
+  async getMeta(
+    content: ContentDetail,
+    type: ContentType,
+  ): Promise<MetaDetail | null> {
     throw new Error("Method not implemented.");
   }
 
@@ -82,14 +91,14 @@ export class KkphimScraper extends BaseProvider {
         data = await axiosGet<KkphimShowResponse>(url);
       }
       if (!data?.status) {
-        data = await this.searchTitle(title, year);
+        data = await this.searchTitle(title, year, season);
       }
       if (!data) return [];
       const subtitleServer = data.episodes[0];
       if (!subtitleServer) return [];
       const voiceOverServer = data.episodes[1];
       let episodeDetails: KkphimEpisodeItem[] = [];
-      if (type !== "movie") {
+      if (type === "series") {
         episodeDetails = [
           subtitleServer.server_data.find((episodeItem) =>
             episodeItem.name.includes(episode?.toString() || "1"),
@@ -111,8 +120,8 @@ export class KkphimScraper extends BaseProvider {
       const name = data.movie.name;
       const streamPromises = episodeDetails.map(async (item, index) => {
         const link = item.link_m3u8;
+        this.logger.log(`Stream Url | ${link}`);
         const proxyLink = getProxyLink(link);
-        this.logger.log(`Stream Url | ${proxyLink}`);
         const info = config.info ? await parseStreamInfo(proxyLink) : undefined;
         const formatTitle = this.formatStreamTitle(
           `${name} | ${index === 0 ? "Phụ đề" : "Thuyết Minh"}`,
@@ -128,7 +137,7 @@ export class KkphimScraper extends BaseProvider {
           behaviorHints: {
             countryWhitelist: [iso639FromCountryCode(CountryCode.vi)],
             notWebReady: true,
-            group: `yastream-kkphim`,
+            bingeGroup: `yastream-kkphim-${index === 0 ? "subtitle" : "voiceover"}`,
           },
         };
         return stream;
@@ -149,6 +158,7 @@ export class KkphimScraper extends BaseProvider {
   async searchTitle(
     title: string,
     year?: number,
+    season?: number,
   ): Promise<KkphimShowResponse | null> {
     const searchUrl = `${this.baseUrl}/v1/api/tim-kiem?keyword=${title}&year=${year}`;
     this.logger.log(`GET search | ${searchUrl}`);
@@ -165,7 +175,7 @@ export class KkphimScraper extends BaseProvider {
       };
       return search;
     });
-    const detail = matchTitle(searchItems, title, year)[0];
+    const detail = matchTitle(searchItems, title, year, season)[0];
     if (!detail) return null;
     const slug = detail.slug;
     const detailUrl = `${this.baseUrl}/phim/${slug}`;

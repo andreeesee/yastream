@@ -1,13 +1,9 @@
-import axios, { AxiosRequestConfig } from "axios";
-import { ContentType } from "stremio-addon-sdk";
+import { ContentType } from "@stremio-addon/sdk";
+import { AxiosRequestConfig } from "axios";
 import { URLSearchParams } from "url";
+import { axiosGet } from "../utils/axios.js";
 import { ENV } from "../utils/env.js";
-import {
-  extractTitleYear,
-  matchTitle,
-  normalize,
-  Search,
-} from "../utils/fuse.js";
+import { extractTitleYear, matchTitle, Search } from "../utils/fuse.js";
 import { BaseMeta, ContentDetail } from "./meta.js";
 import { Provider } from "./provider.js";
 
@@ -21,15 +17,45 @@ export interface TmdbFindResponse {
 
 export interface TmdbTvResult {
   id: number;
+  imdb_id?: string;
   name: string;
   original_name: string;
   overview: string;
   first_air_date: string;
   poster_path: string;
 }
+export interface TmdbTvImages {
+  backdrops: TmdbTvImage[];
+  logos: TmdbTvImage[];
+  posters: TmdbTvImage[];
+}
+interface TmdbTvImage {
+  aspect_ratio: number;
+  height: number;
+  iso_3166_1: string;
+  iso_639_1: string;
+  file_path: string;
+  vote_average: number;
+  vote_count: number;
+  width: number;
+}
+
+interface TmdbExternalID {
+  id: number;
+  imdb_id: string | null;
+  freebase_mid: string | null;
+  freebase_id: string | null;
+  tvdb_id: number | null;
+  tvrage_id: number | null;
+  wikidata_id: string | null;
+  facebook_id: string | null;
+  instagram_id: string | null;
+  twitter_id: string | null;
+}
 
 export interface TmdbMovieResult {
   id: number;
+  imdb_id?: string;
   title: string;
   original_title: string;
   overview: string;
@@ -58,7 +84,7 @@ class TMDBService extends BaseMeta {
   ): Promise<ContentDetail | null> {
     const extracted = extractTitleYear(search);
     search = extracted.title;
-    year = year ? year : extracted.year;
+    year = extracted.year || year;
     if (type === "series") {
       return await this.searchSeriesDetail(search, year);
     } else {
@@ -89,8 +115,11 @@ class TMDBService extends BaseMeta {
   }
 
   async getSearchSeries(title: string, year?: number): Promise<TmdbTvSearch> {
-    const param = { query: title, year: year };
-    return await this._getRequest(`/search/tv`, param);
+    if (year) {
+      const param = { query: title, year: year };
+      return await this._getRequest(`/search/tv`, param);
+    }
+    return await this._getRequest(`/search/tv`, { query: title });
   }
 
   async searchSeriesDetail(
@@ -110,24 +139,47 @@ class TMDBService extends BaseMeta {
           overview: result.overview,
           thumbnail: thumbnail,
           year: year,
-          type: "movie",
+          type: "series",
           tmdbId: result.id,
         };
         return search;
       });
       const detail = matchTitle<ContentDetail>(titles, title, year);
       const tv = detail[0];
-      if (tv) return tv;
+      if (tv) {
+        const images: TmdbTvImages = await this._getRequest(
+          `/tv/${tv.tmdbId}/images`,
+        );
+        const detail = await this.getSeriesDetail(tv.id);
+        if (detail?.imdbId) {
+          tv.imdbId = detail?.imdbId;
+        }
+        this.logger.log(`Search | ${tv.title} ${tv.year} ${tv.imdbId}`);
+        if (images) {
+          if (images.logos.length > 0) {
+            const filePath =
+              images.logos.find((logo: any) => logo.iso_639_1 === "en")
+                ?.file_path ||
+              images.logos[0]?.file_path ||
+              "";
+            tv.logo = `${this.imageUrl}/t/p/w500${filePath}`;
+          }
+        }
+        return tv;
+      }
       return null;
     } catch (error: any) {
-      this.logger.error(`Movie details error | ${error.message}`);
+      this.logger.error(`Search series | ${error.message}`);
       return null;
     }
   }
 
   async getSearchMovie(title: string, year?: number): Promise<TmdbMovieSearch> {
-    const param = { query: title, year: year };
-    return await this._getRequest(`/search/movie`, param);
+    if (year) {
+      const param = { query: title, year: year };
+      return await this._getRequest(`/search/movie`, param);
+    }
+    return await this._getRequest(`/search/movie`, { query: title });
   }
 
   async searchMovieDetail(
@@ -147,14 +199,21 @@ class TMDBService extends BaseMeta {
           year: year,
           type: "movie",
           tmdbId: movie.id,
+          ...(movie.imdb_id && { imdbId: movie.imdb_id }),
         };
         return search;
       });
       const movie = matchTitle(results, title, year)[0];
-      if (movie) return movie;
+      if (movie) {
+        const detail = await this.getMovieDetail(movie.id);
+        if (detail?.imdbId) {
+          movie.imdbId = detail?.imdbId;
+        }
+        return movie;
+      }
       return null;
     } catch (error: any) {
-      this.logger.error(`Movie details error | ${error.message}`);
+      this.logger.error(`Search movie | ${error.message}`);
       return null;
     }
   }
@@ -184,7 +243,7 @@ class TMDBService extends BaseMeta {
 
       return null;
     } catch (error: any) {
-      this.logger.error(`Movie details error | ${error.message}`);
+      this.logger.error(`Find movie | ${error.message}`);
       return null;
     }
   }
@@ -201,7 +260,6 @@ class TMDBService extends BaseMeta {
       const series = seriesResponse.tv_results[0];
       if (series) {
         const year = new Date(series.first_air_date).getFullYear();
-        this.logger.log(`Found | ${series.name} ${year}`);
         return {
           id: imdbId,
           title: series.name,
@@ -214,7 +272,7 @@ class TMDBService extends BaseMeta {
 
       return null;
     } catch (error: any) {
-      this.logger.error(`Series details error | ${error.message}`);
+      this.logger.error(`Find series | ${error.message}`);
       return null;
     }
   }
@@ -226,14 +284,15 @@ class TMDBService extends BaseMeta {
       if (movie) {
         const year = new Date(movie.release_date).getFullYear();
         const thumbnail = `${this.imageUrl}/t/p/w500${movie.poster_path}`;
-        this.logger.log(`Get | ${movie.title} ${year}`);
         return {
           id: movie.id.toString(),
           title: movie.title,
           overview: movie.overview,
+          thumbnail: thumbnail,
           year: year,
           type: "movie",
           tmdbId: movie.id,
+          ...(movie.imdb_id && { imdbId: movie.imdb_id }),
         };
       }
 
@@ -247,11 +306,13 @@ class TMDBService extends BaseMeta {
   async getSeriesDetail(id: string): Promise<ContentDetail | null> {
     this.logger.debug(`ID ${id}`);
     try {
-      const series: TmdbTvResult = await this._getRequest("/tv/" + id);
+      const [series, imdbId] = await Promise.all([
+        this._getRequest<TmdbTvResult>("/tv/" + id),
+        this._getExternalId(id, "series"),
+      ]);
       if (series) {
         const year = new Date(series.first_air_date).getFullYear();
         const thumbnail = `${this.imageUrl}/t/p/w500${series.poster_path}`;
-        this.logger.log(`Get | ${series.name} ${year}`);
         return {
           id: series.id.toString(),
           title: series.name,
@@ -260,6 +321,7 @@ class TMDBService extends BaseMeta {
           type: "series",
           tmdbId: series.id,
           thumbnail: thumbnail,
+          ...(imdbId && { imdbId: imdbId }),
         };
       }
 
@@ -270,14 +332,34 @@ class TMDBService extends BaseMeta {
     }
   }
 
-  private async _getRequest(
+  private async _getExternalId(
+    tmdbId: string,
+    type: ContentType,
+  ): Promise<string | null> {
+    try {
+      const endpoint =
+        type === "movie"
+          ? `/movie/${tmdbId}/external_ids`
+          : `/tv/${tmdbId}/external_ids`;
+      const response = await this._getRequest<TmdbExternalID>(endpoint);
+      return response.imdb_id || null;
+    } catch (error) {
+      this.logger.error(`Get external ID error | ${error}`);
+      return null;
+    }
+  }
+
+  private async _getRequest<T>(
     endpoint: string,
     params: Record<string, any> = {},
-  ): Promise<any> {
+  ): Promise<T> {
     const queryParams = new URLSearchParams({
       ...params,
     });
-    const url = `${this.baseUrl}${endpoint}?${queryParams}`;
+    let url = `${this.baseUrl}${endpoint}`;
+    if (queryParams.size > 0) {
+      url += `?${queryParams}`;
+    }
     const config: AxiosRequestConfig = {
       headers: {
         Authorization: "Bearer " + this.apiKey,
@@ -285,8 +367,11 @@ class TMDBService extends BaseMeta {
       },
     };
     this.logger.log(`GET | ${url}`);
-    const response = await axios.get(`${url}`, config);
-    return response.data;
+    const data = await axiosGet<T>(`${url}`, config);
+    if (!data) {
+      throw new Error(`[TMDB  ] Not found data ${url}`);
+    }
+    return data;
   }
 }
 

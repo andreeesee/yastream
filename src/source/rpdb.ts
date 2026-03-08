@@ -1,4 +1,4 @@
-import { ContentType } from "stremio-addon-sdk";
+import { ContentType } from "@stremio-addon/sdk";
 import { Prefix } from "../lib/manifest.js";
 import { axiosHead } from "../utils/axios.js";
 import { ENV } from "../utils/env.js";

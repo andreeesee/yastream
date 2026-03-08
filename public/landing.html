@@ -37,21 +37,23 @@
                     rel="noopener noreferrer" href="https://themoviedb.org">TMDB</a> and <a target="_blank"
                     rel="noopener noreferrer" href="https://www.thetvdb.com">TVDB</a> for metadata.</p>
         </header>
+
         <!-- Configure -->
         <section id="configure" class="configure">
             <form id="configureForm">
+                <!-- Catalog -->
                 <h3 class="configure-type">Catalog & Metadata</h3>
                 <div class="config-item">
                     <label>kisskh | Multiple languages</label>
                     <input type="checkbox" id="catalog.kisskh" checked />
                 </div>
-                <!-- Catalog selection -->
+                <!-- Catalog kisskh -->
                 <select id="kisskh-catalog" name="kisskhCatalog[]" multiple placeholder="Select a catalog"
                     autocomplete="off">
                     <option value="kisskh.movie.Korean">Korean movie</option>
                     <option selected value="kisskh.series.Korean">Korean series</option>
                     <option value="kisskh.movie.Chinese">Chinese movie</option>
-                    <option selected value="kisskh.series.Chinese">Chinese series</option>
+                    <option value="kisskh.series.Chinese">Chinese series</option>
                     <option value="kisskh.movie.US">US movie</option>
                     <option value="kisskh.series.US">US series</option>
                     <option value="kisskh.movie.Thai">Thai movie</option>
@@ -66,13 +68,34 @@
                     <option value="kisskh.series.Taiwanese">Taiwanese series</option>
                 </select>
                 <div class="config-item">
-                    <label class="config-label">idrama | Khmer </label>
+                    <label>onetouchtv | Multiple languages</label>
+                    <input type="checkbox" id="catalog.onetouchtv" checked />
+                </div>
+                <!-- Catalog onetouchtv -->
+                <select id="onetouchtv-catalog" name="onetouchtvCatalog[]" multiple placeholder="Select a catalog"
+                    autocomplete="off">
+                    <!-- <option value="onetouchtv.movie.Popular">Popular movie</option> -->
+                    <option value="onetouchtv.series.Popular">Popular series</option>
+                    <!-- <option value="onetouchtv.movie.Korean">Korean movie</option> -->
+                    <option selected value="onetouchtv.series.Korean">Korean series</option>
+                    <!-- <option value="onetouchtv.movie.Chinese">Chinese movie</option> -->
+                    <option value="onetouchtv.series.Chinese">Chinese series</option>
+                    <!-- <option value="onetouchtv.movie.Thai">Thai movie</option> -->
+                    <option value="onetouchtv.series.Thai">Thai series</option>
+                </select>
+                <div class="config-item">
+                    <label>idrama | Khmer </label>
                     <input type="checkbox" id="catalog.idrama" />
                 </div>
+                <!-- Stream -->
                 <h3 class="configure-type">Stream and subtitles</h3>
                 <div class="config-item">
                     <label>kisskh | Multiple languages</label>
                     <input type="checkbox" id="stream.kisskh" checked />
+                </div>
+                <div class="config-item">
+                    <label>onetouchtv | Multiple languages</label>
+                    <input type="checkbox" id="stream.onetouchtv" checked />
                 </div>
                 <div class="config-item">
                     <label>idrama | Khmer</label>
@@ -101,6 +124,7 @@
                 </div>
             </form>
         </section>
+
         <!-- Install -->
         <div id="install">
             <div class="grid-btn">
@@ -120,6 +144,7 @@
                 <button data-umami-event="copyManifestUrl" onclick="copyUrl()" class="copy-btn">Copy</button>
             </div>
         </div>
+
         <!-- Support -->
         <div id="support" class="grid-btn">
             <a href="https://www.reddit.com/r/StremioAddons/comments/1r36zji/yastream_yet_another_stream_supported_dramas_and/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button"
@@ -136,12 +161,14 @@
                 </svg>
             </a>
         </div>
+
         <!-- Ko-fi -->
         <div id="ko-fi" style="margin-top: 1rem;">
             <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
             <script
                 type='text/javascript'>kofiwidget2.init('Support me on Ko-fi :>', '#72a4f2', 'U7U01U3J0Z'); kofiwidget2.draw();</script>
         </div>
+
         <!-- Footer -->
         <footer style="margin-top: 1rem">
             <!-- Links -->
@@ -184,6 +211,7 @@
             <!-- Year. Name -->
             <p class="margin-top: 1rem; ">2026. By <a href=" https://www.tamthai.de">Tam Thai</a></p>
         </footer>
+
         <!-- Changelog -->
         <div id="changelogModal" class="modal">
             <div class="modal-content">
@@ -199,163 +227,7 @@
         </div>
     </div>
 
-    <script>
-        // Install
-        function setInstallUrl(url) {
-            const webLink = `https://web.stremio.com/#/addons?addon=${encodeURIComponent(url)}`;
-            const stremioAppLink = url
-                .replace('https://', 'stremio://')
-                .replace('http://', 'stremio://');
-            // Set up install links
-            document.getElementById('installApp').href = stremioAppLink;
-            document.getElementById('installWeb').href = webLink;
-            document.getElementById('manifestUrl').textContent = url;
-        }
-
-        // Copy URL function
-        function copyUrl() {
-            const manifestUrl = document.getElementById('manifestUrl').textContent;
-            navigator.clipboard.writeText(manifestUrl).then(() => {
-                const btn = document.querySelector('.copy-btn');
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                }, 2000);
-            }).catch(err => {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = manifestUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-
-                const btn = document.querySelector('.copy-btn');
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                }, 2000);
-            });
-        }
-
-        // Changelog
-        const modal = document.getElementById("changelogModal");
-        const versionBtn = document.getElementById("versionTag");
-        const closeBtn = document.querySelector(".close-modal");
-
-        // Open modal on click
-        versionBtn.onclick = function () {
-            modal.style.display = "block";
-        }
-
-        // Close modal when clicking (X)
-        closeBtn.onclick = function () {
-            modal.style.display = "none";
-        }
-
-        // Close modal when clicking anywhere outside the box
-        window.onclick = function (event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
-
-        const kisskhSelect = new TomSelect("#kisskh-catalog", {
-            plugins: {
-                remove_button: {
-                    title: 'Remove this catalog',
-                }
-            },
-            hideSelected: true,
-        });
-        // Configure
-        document.getElementById('configureForm').addEventListener('change', function (e) {
-            e.preventDefault();
-            updateManifestUrl();
-        });
-        function updateManifestUrl() {
-            const config = {
-                catalogs: [],
-                catalog: [],
-                stream: [],
-            };
-
-            const kisskhCatalogs = document.getElementById('kisskh-catalog');
-            const kisskhCatalog = document.getElementById('catalog.kisskh');
-            if (kisskhCatalog.checked === true) {
-                kisskhCatalogs.nextSibling.style.display = 'block';
-            } else {
-                kisskhCatalogs.nextSibling.style.display = 'none';
-                kisskhSelect.clear();
-            }
-            debugger;
-            let selectedCatalogs = kisskhSelect.getValue();
-            config.catalogs = Array.from(selectedCatalogs).map((catalog) => { return catalog });
-            const defaultCatalogs = ["kisskh.series.Search", "kisskh.movie.Search", "idrama.series.Search", "idrama.series.iDrama"];
-            config.catalogs = [...config.catalogs, ...defaultCatalogs]
-
-            const checkedBoxes = document.querySelectorAll('#configureForm input[type="checkbox"]');
-            checkedBoxes.forEach(box => {
-                // for nsfw, info
-                if (!box.id.includes(".")) {
-                    config[box.id] = box.checked
-                } else if (box.checked == true) {
-                    // for catalog and stream provider
-                    const [type, source] = box.id.split(".");
-                    if (config[type]) {
-                        config[type].push(source);
-                    }
-                }
-            });
-
-            console.log('[config]', config);
-            const configJson = JSON.stringify(config);
-            const configBase64 = btoa(configJson);
-            const manifestUrl = window.location.origin + '/' + configBase64 + '/manifest.json';
-            setInstallUrl(manifestUrl);
-        }
-
-        // Update config redirect from stremio (/config64/configure)
-        document.addEventListener("DOMContentLoaded", () => {
-            setInstallUrl(window.location.origin + '/manifest.json');
-            const path = window.location.pathname;
-            const match = path.match(/\/(.+)\/configure/);
-            if (match && match[1]) {
-                try {
-                    const config = JSON.parse(atob(match[1]));
-                    console.log(JSON.stringify(config))
-
-                    Object.keys(config).forEach(key => {
-                        const values = config[key];
-                        if (key === 'nsfw' || key === 'info') {
-                            const input = document.getElementById(key);
-                            input.checked = config[key];
-                        } else if (key === 'catalogs') {
-                            kisskhSelect.setValue(values)
-                        } else if (key === 'catalog' || key === 'stream') {
-                            values.forEach(value => {
-                                // Reconstruct the ID (e.g., "catalog.idrama")
-                                const inputId = `${key}.${value}`;
-                                const input = document.getElementById(inputId);
-                                if (input) {
-                                    input.checked = true;
-                                }
-                            });
-                        }
-                    });
-
-                    // After applying saved config, update the install links 
-                    updateManifestUrl();
-                } catch (error) {
-                    console.error("Failed to decode configuration:", error);
-                }
-            } else {
-                updateManifestUrl();
-            }
-        });
-    </script>
+    <script src="/js/landing.js"></script>
 </body>
 
 </html>

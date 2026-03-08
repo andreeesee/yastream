@@ -1,25 +1,29 @@
 import {
-  addonBuilder,
-  AddonInterface,
-  Args,
+  AddonBuilder,
+  AddonCatalogHandlerArgs,
   Cache,
-  ContentType,
+  CatalogHandlerArgs,
   MetaDetail,
+  MetaHandlerArgs,
   MetaPreview,
   ShortManifestResource,
+  StreamHandlerArgs,
   Subtitle,
-} from "stremio-addon-sdk";
+  SubtitlesHandlerArgs,
+} from "@stremio-addon/sdk";
 import KissKHScraper from "../source/kisskh.js";
 // import TMDBService from "../source/tmdb.js";
 
 import { IDramaScraper } from "../source/idrama.js";
 import { KkphimScraper } from "../source/kkphim.js";
 import { ContentDetail } from "../source/meta.js";
+import { OnetouchtvScrapper } from "../source/onetouchtv.js";
 import { OphimScraper } from "../source/ophim.js";
 import { BaseProvider, Provider } from "../source/provider.js";
 import { tmdb } from "../source/tmdb.js";
 import { tvdb } from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
+import { extractTitleYear } from "../utils/fuse.js";
 import { Logger } from "../utils/logger.js";
 import {
   buildManifest,
@@ -27,27 +31,21 @@ import {
   Prefix,
   UserConfig,
 } from "./manifest.js";
-import { extractTitleYear } from "../utils/fuse.js";
-interface BaseArgs {
-  type: ContentType;
-  id: string;
-}
-
-interface ExtendArgs extends BaseArgs {
-  extra: {
-    videoHash: string;
-    videoSize: string;
-  };
-}
-
 const kisskh = new KissKHScraper(Provider.KISSKH);
 const idrama = new IDramaScraper(Provider.IDRAMA);
 const kkphim = new KkphimScraper(Provider.KKPHIM);
 const ophim = new OphimScraper(Provider.OPHIM);
-const providers: BaseProvider[] = [kisskh, idrama, kkphim, ophim];
+const onetouchtv = new OnetouchtvScrapper(Provider.ONETOUCHTV);
+const providers: BaseProvider[] = [kisskh, onetouchtv, idrama, kkphim, ophim];
+const providersMap = new Map<Provider, BaseProvider>();
+providers.forEach((provider) => {
+  providersMap.set(provider.name, provider);
+});
 const logger = new Logger("ADDON");
 
-async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
+async function getContent(
+  args: SubtitlesHandlerArgs | CatalogHandlerArgs,
+): Promise<ContentDetail | null> {
   switch (true) {
     case args.id.startsWith(Prefix.IMDB): {
       // imdb | tt0000:season:episode
@@ -64,7 +62,7 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
         if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
       }
       if (!content) {
-        logger.log(`No TMDB found with IMDB ${imdbId}`);
+        logger.error(`No TMDB found with IMDB ${imdbId}`);
         return null;
       }
       if (season) content.season = parseInt(season);
@@ -122,17 +120,25 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
       // id | idrama:postId:season:episode
       const [prefix, idramaId, season, episode] = args.id.split(":");
       if (!idramaId) return null;
+      const contentKey = `content:tvdb:${idramaId}`;
+      const cacheContent = cache.get(contentKey);
+      let content: ContentDetail | null = cacheContent;
+      if (content) {
+        return content;
+      }
       const detail = await idrama.getStreamDetail(idramaId);
       if (!detail) return null;
       const { title, year } = detail;
-      const content: ContentDetail = {
+      content = {
         id: idramaId,
+        idramaId: idramaId,
         title: title,
         year: year,
-        type: "series",
+        type: args.type,
         season: season ? parseInt(season) : 1,
         episode: episode ? parseInt(episode) : 1,
       };
+      cache.set(contentKey, content, 24 * 60 * 60 * 1000);
       return content;
     }
     case args.id.startsWith(Prefix.KISSKH): {
@@ -142,11 +148,31 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
       const { title, releaseDate } = await kisskh.getDetail(kisskhId);
       const extracted = extractTitleYear(title);
       const pureTitle = extracted.title;
+      const year = extracted.year || new Date(releaseDate).getFullYear();
       const content: ContentDetail = {
         id: kisskhId,
+        kisskhId: kisskhId,
         title: pureTitle,
-        year: new Date(releaseDate).getFullYear(),
-        type: "series",
+        year: year,
+        type: args.type,
+        season: season ? parseInt(season) : 1,
+        episode: episode ? parseInt(episode) : 1,
+      };
+      return content;
+    }
+    case args.id.startsWith(Prefix.ONETOUCHTV): {
+      // id | onetouchtv:detailId:season:episode
+      const [prefix, onetouchtvId, season, episode] = args.id.split(":");
+      if (!onetouchtvId) return null;
+      const { title, year } = (await onetouchtv.getDetail(onetouchtvId)).result;
+      const extracted = extractTitleYear(title);
+      const pureTitle = extracted.title;
+      const yearFormat = extracted.year || parseInt(year);
+      const content: ContentDetail = {
+        id: onetouchtvId,
+        title: pureTitle,
+        year: yearFormat,
+        type: args.type,
         season: season ? parseInt(season) : 1,
         episode: episode ? parseInt(episode) : 1,
       };
@@ -157,7 +183,7 @@ async function getContent(args: BaseArgs): Promise<ContentDetail | null> {
 }
 
 export async function buildCatalogHandler(
-  args: Args,
+  args: AddonCatalogHandlerArgs,
   config: UserConfig = defaultConfig,
 ): Promise<{ metas: MetaPreview[] } & Cache> {
   // id | kisskh.movie.Korean
@@ -173,15 +199,25 @@ export async function buildCatalogHandler(
       config,
       "catalog",
     );
-    const metas = await Promise.all(
-      filteredProviders.map((provider) => {
-        if (args.extra.search) {
-          return provider.searchCatalog(args, config);
-        }
-        return provider.getCatalog(args, config);
-      }),
-    );
-    const metaPreviews = { metas: metas.flat(), cacheMaxAge: 4 * 60 * 60 };
+    const [prefix] = args.id.split(".");
+    if (!prefix) {
+      return { metas: [] };
+    }
+    const isSearch = args.extra.search;
+    const providerName = prefix as Provider;
+    const provider = providersMap.get(providerName);
+    if (!provider) {
+      logger.error(`No provider found for prefix ${prefix}`);
+      return { metas: [] };
+    }
+    if (!filteredProviders.includes(provider)) {
+      logger.error(`Provider ${providerName} is not selected`);
+      return { metas: [] };
+    }
+    const metas = isSearch
+      ? await provider.searchCatalog(args, config)
+      : await provider.getCatalog(args, config);
+    const metaPreviews = { metas: metas, cacheMaxAge: 4 * 60 * 60 };
     cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
     return metaPreviews;
   } catch (error) {
@@ -191,7 +227,7 @@ export async function buildCatalogHandler(
 }
 
 export async function buildMetaHandler(
-  args: BaseArgs,
+  args: MetaHandlerArgs,
   config: UserConfig = defaultConfig,
 ) {
   logger.log(`Meta | ${args.id}`);
@@ -204,20 +240,16 @@ export async function buildMetaHandler(
     meta: {
       id: args.id,
       type: args.type,
-      name: "You should use AIOMetadata for this metadata, I think they are doing a better job than me. Fix by order AIOMetadata to be higher than this addon",
+      name: "You should use AIOMetadata for this metadata. Fix by order AIOMetadata to be higher than yastream",
     },
   };
   try {
     const content = await getContent(args);
     if (!content) return defaultMeta;
 
-    const [prefix, id] = args.id.split(":");
-    if (!id) {
+    const [prefix] = args.id.split(":");
+    if (!prefix) {
       return defaultMeta;
-    }
-    const notCustomPrefix = [Prefix.IMDB, Prefix.TMDB, Prefix.TVDB];
-    for (const pref of notCustomPrefix) {
-      if (id.startsWith(pref)) return defaultConfig;
     }
     const filteredProviders = filterProvider(
       providers,
@@ -225,15 +257,22 @@ export async function buildMetaHandler(
       config,
       "meta",
     );
-    for (const provider of filteredProviders) {
-      const meta = await provider.getMeta(content.id || id, args.type);
-      if (meta) {
-        const metaDetail = { meta: meta || defaultMeta.meta };
-        cache.set(metaKey, metaDetail, 4 * 60 * 60 * 1000);
-        return metaDetail;
-      }
+    const provider = providersMap.get(prefix as Provider);
+    if (!provider) {
+      logger.error(`No meta provider found for prefix ${prefix}`);
+      return defaultMeta;
     }
-    return defaultMeta;
+    if (!filteredProviders.includes(provider)) {
+      logger.error(`Meta provider ${prefix} is not selected`);
+      return defaultMeta;
+    }
+    let meta = defaultMeta;
+    const detail = await provider.getMeta(content, args.type);
+    if (detail) {
+      meta = { meta: detail };
+    }
+    cache.set(metaKey, meta, 4 * 60 * 60 * 1000);
+    return meta;
   } catch (error) {
     logger.error(`Meta handler error: ${error}`);
     return defaultMeta;
@@ -241,7 +280,7 @@ export async function buildMetaHandler(
 }
 
 export async function buildStreamHandler(
-  args: BaseArgs,
+  args: StreamHandlerArgs,
   config: UserConfig = defaultConfig,
 ) {
   logger.log(`Stream | ${args.id}`);
@@ -274,7 +313,7 @@ export async function buildStreamHandler(
 }
 
 export async function buildSubtitleHandler(
-  args: ExtendArgs,
+  args: SubtitlesHandlerArgs,
   config: UserConfig = defaultConfig,
 ): Promise<{ subtitles: Subtitle[] }> {
   logger.log(`Subtitles | ${args.id}`);
@@ -337,18 +376,18 @@ function filterProvider(
 }
 
 // With default manifest
-const builder = new addonBuilder(buildManifest());
+const builder = new AddonBuilder(buildManifest());
 builder.defineCatalogHandler(async (args) => {
   return await buildCatalogHandler(args);
 });
-builder.defineMetaHandler(async (args: BaseArgs) => {
+builder.defineMetaHandler(async (args) => {
   return await buildMetaHandler(args);
 });
-builder.defineStreamHandler(async (args: BaseArgs) => {
+builder.defineStreamHandler(async (args) => {
   return await buildStreamHandler(args);
 });
 builder.defineSubtitlesHandler(async (args) => {
   return await buildSubtitleHandler(args);
 });
 
-export default builder.getInterface() as AddonInterface;
+export default builder.getInterface();

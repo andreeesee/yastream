@@ -1,4 +1,4 @@
-import { ContentType } from "stremio-addon-sdk";
+import { ContentType } from "@stremio-addon/sdk";
 import { Logger } from "../utils/logger.js";
 import { Provider } from "./provider.js";
 
@@ -9,11 +9,16 @@ export interface ContentDetail {
   overview?: string;
   year: number;
   type: ContentType;
+  imdbId?: string;
   tmdbId?: string | number;
   tvdbId?: string | number;
+  kisskhId?: string;
+  onetouchtvId?: string;
+  idramaId?: string;
   season?: number;
   episode?: number;
   thumbnail?: string;
+  logo?: string;
 }
 
 export abstract class BaseMeta {

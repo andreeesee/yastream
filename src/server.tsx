@@ -1,11 +1,11 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { AddonBuilder, createRouter } from "@stremio-addon/sdk";
 import { Umami } from "@umami/node";
 import fs from "fs";
 import { Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import path from "path";
-import stremioPkg, { addonBuilder } from "stremio-addon-sdk";
 import pkg from "../package.json" with { type: "json" };
 import addonInterface, {
   buildCatalogHandler,
@@ -19,14 +19,13 @@ import { cache } from "./utils/cache.js";
 import { ENV } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";
 import { getSetDecryptedSubtitle } from "./utils/subtitle.js";
-const { getRouter } = stremioPkg;
 
 const HOST = "0.0.0.0";
 const PORT = ENV.PORT;
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, "public");
 const app = new Hono();
-const addonRouter = getRouter(addonInterface);
+const addonRouter = createRouter(addonInterface);
 const logger = new Logger("SERVER");
 
 // CORS middleware
@@ -60,13 +59,8 @@ app.on(
 
 // Stremio addon routes handler
 const handleStremioRoute = async (c: Context) => {
-  return new Promise<Response>((resolve) => {
-    const req = c.env?.incoming;
-    const res = c.env?.outgoing;
-    addonRouter(req, res, () => {
-      resolve(c.notFound());
-    });
-  });
+  const response = await addonRouter(c.req.raw);
+  return response || c.notFound();
 };
 const stremioRoutes = [
   "/stremio/*",
@@ -117,7 +111,7 @@ configStremioRoutes.forEach((route) => {
     const configBase64 = c.req.param("configBase64");
     const config = decodeConfig(configBase64);
     const manifest = buildManifest(config);
-    const builder = new addonBuilder(manifest);
+    const builder = new AddonBuilder(manifest);
     if (manifest.resources.includes("catalog")) {
       builder.defineCatalogHandler(async (args) => {
         return await buildCatalogHandler(args, config);
@@ -138,14 +132,11 @@ configStremioRoutes.forEach((route) => {
         return await buildSubtitleHandler(args, config);
       });
     }
-    const customRouter = getRouter(builder.getInterface());
-    return new Promise<Response>((resolve) => {
-      const req = c.env?.incoming;
-      const res = c.env?.outgoing;
-      customRouter(req, res, () => {
-        resolve(c.notFound());
-      });
-    });
+    const customRouter = createRouter(builder.getInterface());
+    // const req = c.env?.incoming;
+    // const res = c.env?.outgoing;
+    const response = await customRouter(c.req.raw);
+    return response || c.notFound();
   });
 });
 

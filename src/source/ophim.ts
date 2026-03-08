@@ -1,11 +1,11 @@
 import {
-  Args,
+  CatalogHandlerArgs,
   ContentType,
   MetaDetail,
   MetaPreview,
   Stream,
   Subtitle,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { parseStreamInfo } from "../utils/info.js";
@@ -50,17 +50,26 @@ export class OphimScraper extends BaseProvider {
     Prefix.KISSKH,
   ];
 
-  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async searchCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
     const search = extra.search;
     throw new Error("Method not implemented.");
   }
 
-  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async getCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     throw new Error("Method not implemented.");
   }
 
-  getMeta(id: string, type: ContentType): Promise<MetaDetail | null> {
+  async getMeta(
+    content: ContentDetail,
+    type: ContentType,
+  ): Promise<MetaDetail | null> {
     throw new Error("Method not implemented.");
   }
 
@@ -102,7 +111,7 @@ export class OphimScraper extends BaseProvider {
           url: url,
           behaviorHints: {
             notWebReady: true,
-            group: `yastream-ophim`,
+            bingeGroup: `yastream-ophim`,
           },
         },
       ];

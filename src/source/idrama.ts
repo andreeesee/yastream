@@ -1,13 +1,13 @@
-import * as cheerio from "cheerio";
 import {
-  Args,
+  CatalogHandlerArgs,
   ContentType,
   MetaDetail,
   MetaPreview,
   MetaVideo,
   Stream,
   Subtitle,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
+import * as cheerio from "cheerio";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
@@ -56,7 +56,10 @@ export class IDramaScraper extends BaseProvider {
     ONELEGEND: "596013908374331296",
   };
 
-  async searchCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async searchCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     const { type, extra } = args;
     const search = extra.search;
     this.logger.log(`Search | ${search}`);
@@ -70,13 +73,15 @@ export class IDramaScraper extends BaseProvider {
       type: type,
       name: item.title,
       poster: item.poster,
-      posterShape: "regular",
     }));
     cache.set(searchKey, catalog);
     return catalog;
   }
 
-  async getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]> {
+  async getCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]> {
     const { id, type, extra } = args;
     const skip = extra.skip;
     const page = skip ? Math.ceil(skip / this.pageSize) + 1 : 1;
@@ -90,7 +95,6 @@ export class IDramaScraper extends BaseProvider {
       type: type,
       name: item.title,
       poster: item.poster,
-      posterShape: "regular",
     }));
     cache.set(catalogKey, catalog, 4 * 60 * 60 * 1000);
     return catalog;
@@ -114,22 +118,30 @@ export class IDramaScraper extends BaseProvider {
     };
   }
 
-  async getMeta(id: string, type: ContentType): Promise<MetaDetail> {
+  async getMeta(
+    content: ContentDetail,
+    type: ContentType,
+  ): Promise<MetaDetail | null> {
+    const id = content.idramaId;
+    if (!id) {
+      return null;
+    }
     const metaKey = `meta:${id}`;
     const cacheMeta: MetaDetail = cache.get(metaKey);
     if (cacheMeta) return cacheMeta;
     const videos = await this._getEpisodes(id);
-    const title = videos[0]?.title;
-    const released = videos[0]?.released;
-    const formatTitle = title?.toLowerCase().trim().replace(/ /g, "-");
+    const title = videos[0]?.title || "";
+    const released = videos[0]?.released || new Date().toISOString();
+    const formatTitle = title.toLowerCase().trim().replace(/ /g, "-");
     const url = `${this.baseUrl}/${formatTitle}`;
     const detail = await this._scrapeDetail(url);
     videos.forEach((video) => (video.thumbnail = detail.thumbnail));
+    const name = title || detail.title;
     const meta: MetaDetail = {
       id: `idrama:${id}`,
-      name: title || detail.title,
+      name: name,
       type: "series",
-      description: title, // no description
+      description: name,
       poster: detail.thumbnail,
       background: detail.thumbnail,
       videos: videos,
@@ -176,7 +188,7 @@ export class IDramaScraper extends BaseProvider {
           title: `${formatTitle}`,
           behaviorHints: {
             notWebReady: true,
-            group: `yastream-kisskh`,
+            bingeGroup: `yastream-kisskh`,
           },
         },
       ];

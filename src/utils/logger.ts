@@ -14,7 +14,7 @@ export class Logger {
   private currentPriority: number = LOG_LEVEL_PRIORITY[this.envLevel] ?? 2;
 
   constructor(name: string) {
-    this.name = name.padEnd(6, " ").toUpperCase();
+    this.name = name.substring(0, 6).padEnd(6, " ").toUpperCase();
   }
 
   private shouldLog(level: LogLevel): boolean {

@@ -1,11 +1,11 @@
 import {
-  Args,
+  CatalogHandlerArgs,
   ContentType,
   MetaDetail,
   MetaPreview,
   Stream,
   Subtitle,
-} from "stremio-addon-sdk";
+} from "@stremio-addon/sdk";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { ENV } from "../utils/env.js";
 import { getDisplayResolution, StreamInfo } from "../utils/info.js";
@@ -17,6 +17,7 @@ export enum Provider {
   IDRAMA = "idrama",
   KKPHIM = "kkphim",
   OPHIM = "ophim",
+  ONETOUCHTV = "onetouchtv",
   TMDB = "tmdb",
   TVDB = "tvdb",
 }
@@ -46,13 +47,19 @@ export abstract class BaseProvider {
   }
 
   abstract searchCatalog(
-    args: Args,
+    args: CatalogHandlerArgs,
     config: UserConfig,
   ): Promise<MetaPreview[]>;
 
-  abstract getCatalog(args: Args, config: UserConfig): Promise<MetaPreview[]>;
+  abstract getCatalog(
+    args: CatalogHandlerArgs,
+    config: UserConfig,
+  ): Promise<MetaPreview[]>;
 
-  abstract getMeta(id: string, type: ContentType): Promise<MetaDetail | null>;
+  abstract getMeta(
+    content: ContentDetail,
+    type: ContentType,
+  ): Promise<MetaDetail | null>;
 
   abstract getStreams(
     content: ContentDetail,

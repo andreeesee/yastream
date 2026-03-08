@@ -15,7 +15,7 @@ export async function axiosGet<T>(
     cache.set(urlKey, data);
     return data as T;
   } catch (error) {
-    logger.error(`Fail to get | ${url}`);
+    logger.error(`Fail GET | ${url}`);
   }
   return null;
 }
@@ -32,7 +32,7 @@ export async function axiosHead<T>(
     cache.set(urlKey, true, 8 * 60 * 60 * 1000);
     return true;
   } catch (error) {
-    logger.error(`Fail to head | ${url}, ${error}`);
+    logger.error(`Fail HEAD | ${url}, ${error}`);
   }
   cache.set(urlKey, false, 4 * 60 * 60 * 1000);
   return false;

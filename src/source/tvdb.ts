@@ -1,5 +1,6 @@
+import { ContentType } from "@stremio-addon/sdk";
 import axios, { AxiosRequestConfig } from "axios";
-import { ContentType } from "stremio-addon-sdk";
+import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
 import { ENV } from "../utils/env.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
@@ -112,7 +113,7 @@ class TVDBService extends BaseMeta {
           overview: series.data.overview,
           year: parseInt(year),
           type: "series",
-          tmdbId: series.data.id,
+          tvdbId: series.data.id,
           id: series.data.id.toString(),
         };
       }
@@ -157,8 +158,8 @@ class TVDBService extends BaseMeta {
     };
     const url = `${this.baseUrl}${endpoint}`;
     this.logger.log(`GET | ${url}`);
-    const response = await axios.get(url, config);
-    return response.data;
+    const data = await axiosGet(url, config);
+    return data;
   }
 
   /**
