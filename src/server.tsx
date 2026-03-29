@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { rateLimiter } from "hono-rate-limiter";
 import { AddonBuilder, createRouter } from "@stremio-addon/sdk";
 import { Umami } from "@umami/node";
 import fs from "fs";
@@ -7,7 +8,7 @@ import { Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import path from "path";
 import pkg from "../package.json" with { type: "json" };
-import addonInterface, {
+import {
   buildCatalogHandler,
   buildMetaHandler,
   buildStreamHandler,
@@ -25,43 +26,73 @@ const PORT = ENV.PORT;
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, "public");
 const app = new Hono();
-const addonRouter = createRouter(addonInterface);
 const logger = new Logger("SERVER");
 
 // CORS middleware
 app.use("*", cors());
 
 // Umami Tracking for specific paths
-const umami = new Umami();
-umami.init({
-  websiteId: "f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c",
-  hostUrl: "https://umami-fs.tamthai.de",
+if (ENV.ENABLE_ANALYTICS) {
+  const umami = new Umami();
+  umami.init({
+    websiteId: "f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c",
+    hostUrl: "https://umami-fs.tamthai.de",
+  });
+  app.on(
+    "GET",
+    [
+      "/:configBase64/catalog/*",
+      "/:configBase64/meta/*",
+      "/:configBase64/stream/*",
+      "/:configBase64/subtitles/*",
+      "/",
+      "/catalog/*",
+      "/meta/*",
+      "/stream/*",
+      "/subtitles/*",
+    ],
+    async (c, next) => {
+      const ip =
+        c.req.header("x-forwarded-for") || c.req.header("cf-connecting-ip");
+      const country = c.req.header("cf-ipcountry");
+      const origin = c.req.header("origin") || c.req.header("referer");
+      const userAgent = c.req.header("user-agent");
+      umami.track({
+        url: c.req.url,
+        ip: ip,
+        country: country,
+        origin: origin,
+        userAgent: userAgent,
+      });
+      await next();
+    },
+  );
+}
+
+const limiter = rateLimiter({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  limit: 100,
+  keyGenerator: (c) =>
+    c.req.header("x-forwarded-for") ||
+    c.req.header("cf-connecting-ip") ||
+    "anonymous",
 });
-app.on(
-  "GET",
-  [
-    "/:configBase64/catalog/*",
-    "/:configBase64/meta/*",
-    "/:configBase64/stream/*",
-    "/:configBase64/subtitles/*",
-    "/catalog/*",
-    "/meta/*",
-    "/stream/*",
-    "/subtitles/*",
-  ],
-  async (c, next) => {
-    if (ENV.ENABLE_ANALYTICS) {
-      umami.track({ url: c.req.url });
-    }
-    await next();
-  },
-);
+
+// Apply to all stremio routes
+
+// Handle config routes
+app.get("/manifest.json", (c) => {
+  const manifest = buildManifest();
+  return c.json(manifest);
+});
+app.get("/:configBase64/manifest.json", (c) => {
+  const configBase64 = c.req.param("configBase64");
+  const config = decodeConfig(configBase64);
+  const manifest = buildManifest(config);
+  return c.json(manifest);
+});
 
 // Stremio addon routes handler
-const handleStremioRoute = async (c: Context) => {
-  const response = await addonRouter(c.req.raw);
-  return response || c.notFound();
-};
 const stremioRoutes = [
   "/stremio/*",
   "/catalog/*",
@@ -70,7 +101,26 @@ const stremioRoutes = [
   "/subtitles/*",
 ];
 stremioRoutes.forEach((route) => {
-  app.get(route, handleStremioRoute);
+  app.use(route, limiter);
+  app.get(route, async (c: Context) => {
+    const defaultManifest = buildManifest();
+    const builder = new AddonBuilder(defaultManifest);
+    builder.defineCatalogHandler(async (args) => {
+      return await buildCatalogHandler(args);
+    });
+    builder.defineMetaHandler(async (args) => {
+      return await buildMetaHandler(args);
+    });
+    builder.defineStreamHandler(async (args) => {
+      return await buildStreamHandler(args);
+    });
+    builder.defineSubtitlesHandler(async (args) => {
+      return await buildSubtitleHandler(args);
+    });
+    const addonRouter = createRouter(builder.getInterface());
+    const response = await addonRouter(c.req.raw);
+    return response || c.notFound();
+  });
 });
 
 const decodeConfig = (configBase64: string): UserConfig => {
@@ -88,17 +138,6 @@ const decodeConfig = (configBase64: string): UserConfig => {
   }
 };
 
-// Handle config routes
-app.get("/manifest.json", (c) => {
-  const manifest = buildManifest();
-  return c.json(manifest);
-});
-app.get("/:configBase64/manifest.json", (c) => {
-  const configBase64 = c.req.param("configBase64");
-  const config = decodeConfig(configBase64);
-  const manifest = buildManifest(config);
-  return c.json(manifest);
-});
 const configStremioRoutes = [
   "/:configBase64/stremio/*",
   "/:configBase64/catalog/*",
@@ -107,8 +146,9 @@ const configStremioRoutes = [
   "/:configBase64/subtitles/*",
 ];
 configStremioRoutes.forEach((route) => {
+  app.use(route, limiter);
   app.get(route, async (c: Context) => {
-    const configBase64 = c.req.param("configBase64");
+    const configBase64 = c.req.param("configBase64") as string;
     const config = decodeConfig(configBase64);
     const manifest = buildManifest(config);
     const builder = new AddonBuilder(manifest);
@@ -133,8 +173,6 @@ configStremioRoutes.forEach((route) => {
       });
     }
     const customRouter = createRouter(builder.getInterface());
-    // const req = c.env?.incoming;
-    // const res = c.env?.outgoing;
     const response = await customRouter(c.req.raw);
     return response || c.notFound();
   });
@@ -263,7 +301,7 @@ app.get("/dashboard", async (c) => {
           </div>
         </div>
         <a
-          href={`/debug/cache?key=${userKey}&clear=true`}
+          href={`/dashboard?key=${userKey}&clear=true`}
           class="btn-clear"
           onclick="return confirm('Really clear all cache?')"
         >
@@ -276,9 +314,11 @@ app.get("/dashboard", async (c) => {
             </tr>
           </thead>
           <tbody>
-            {data.keys.map((k) => (
+            {data.data.map((k) => (
               <tr>
-                <td>{k}</td>
+                <td>{k.key}</td>
+                <td>{JSON.stringify(k.value)}</td>
+                <td>{JSON.stringify(k.expiresAt)}</td>
               </tr>
             ))}
           </tbody>
@@ -290,7 +330,7 @@ app.get("/dashboard", async (c) => {
 
 // Error handling
 app.onError((err, c) => {
-  logger.error(`Error | ${err}`);
+  logger.error(`${err}`);
   return c.text("Internal Server Error", 500);
 });
 

@@ -78,8 +78,9 @@ export class OphimScraper extends BaseProvider {
     config: UserConfig,
   ): Promise<Stream[]> {
     try {
-      const { title, type, year, season, episode, tmdbId, altTitle } = content;
-      const streamKey = `streams:${this.name}:${type}:${title}:${season}:${episode}`;
+      const { title, type, year, season, episode, id, tmdbId, altTitle } =
+        content;
+      const streamKey = `streams:${type}:${this.name}:${id}:${title}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
       const data = await this.searchTitle(title, year);

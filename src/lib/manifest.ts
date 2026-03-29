@@ -31,12 +31,20 @@ export const defaultCatalogs = [
   `${Prefix.IDRAMA}.series.Search`,
 
   `${Prefix.KISSKH}.series.Korean`,
-  `${Prefix.KISSKH}.series.Chinese`,
   `${Prefix.KISSKH}.series.Search`,
   `${Prefix.KISSKH}.movie.Search`,
 
+  `${Prefix.ONETOUCHTV}.series.Korean`,
   `${Prefix.ONETOUCHTV}.series.Search`,
 ];
+
+export const defaultConfig: UserConfig = {
+  catalog: [Provider.KISSKH, Provider.ONETOUCHTV],
+  stream: [Provider.KISSKH, Provider.ONETOUCHTV],
+  catalogs: defaultCatalogs,
+  nsfw: false,
+  info: false,
+};
 
 function buildCatalogMap(catalogs: string[] = defaultCatalogs) {
   const manifestCatalogs = catalogs.map((catalogId) => {
@@ -63,15 +71,7 @@ function buildCatalogMap(catalogs: string[] = defaultCatalogs) {
   return catalogMap;
 }
 
-export const defaultConfig: UserConfig = {
-  catalog: [Provider.KISSKH],
-  stream: [Provider.KISSKH],
-  catalogs: defaultCatalogs,
-  nsfw: false,
-  info: false,
-};
-
-const defaultManifest: Manifest = {
+const baseManifest: Manifest = {
   id: "community.yastream",
   contactEmail: "tamthai.de@gmail.com",
   version: pkg.version,
@@ -87,7 +87,7 @@ const defaultManifest: Manifest = {
     Prefix.ONETOUCHTV,
   ],
   types: ["movie", "series"],
-  name: "yastream",
+  name: pkg.name,
   description:
     "Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with languages selection. Powered by TMDB and TVDB for metadata",
   behaviorHints: {
@@ -96,17 +96,17 @@ const defaultManifest: Manifest = {
     configurable: true,
     configurationRequired: false,
   },
-  config: [{ key: "config", type: "text" }],
 };
 
+let defaultManifest: Manifest | null = null;
 export function buildManifest(config?: UserConfig) {
+  if (!config && defaultManifest) return defaultManifest;
   config = config || defaultConfig;
   const config64 = btoa(JSON.stringify(config));
-  const manifest = { ...defaultManifest };
-  manifest.resources = [...defaultManifest.resources];
-  manifest.catalogs = [...defaultManifest.catalogs];
+  const manifest = { ...baseManifest };
+  manifest.resources = [...baseManifest.resources];
+  manifest.catalogs = [...baseManifest.catalogs];
   const catalogMap = buildCatalogMap(config.catalogs);
-
   if (config.catalog && config.catalog.length > 0) {
     manifest.resources.push("catalog");
     manifest.resources.push("meta");
@@ -123,6 +123,10 @@ export function buildManifest(config?: UserConfig) {
     manifest.resources.push("subtitles");
   }
 
+  if (config === defaultConfig) {
+    defaultManifest = structuredClone(manifest);
+    return defaultManifest;
+  }
   manifest.config = [{ key: "config", type: "text", default: config64 }];
   return manifest;
 }

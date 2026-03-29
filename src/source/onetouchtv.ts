@@ -182,12 +182,23 @@ export class OnetouchtvScrapper extends BaseProvider {
           (item) => item.country === catalogType,
         );
       }
-      return filteredData.map((item: any) => ({
-        id: `${Prefix.ONETOUCHTV}:${item.id}`,
-        name: item.title,
-        poster: item.image,
-        type: type,
-      }));
+      return filteredData.map((item: any) => {
+        const onetouchtvId = `${Prefix.ONETOUCHTV}:${item.id}`;
+        const metaDetail: MetaDetail = {
+          id: onetouchtvId,
+          name: item.title,
+          poster: item.image,
+          background: item.image,
+          type: type,
+        };
+        if (type === "movie") {
+          metaDetail.behaviorHints = {
+            defaultVideoId: `${onetouchtvId}:1:1`,
+          };
+          return metaDetail;
+        }
+        return metaDetail;
+      });
     } catch (error) {
       this.logger.error(`Failed to get catalog ${args.id} | ${error}`);
       return [];
@@ -201,15 +212,9 @@ export class OnetouchtvScrapper extends BaseProvider {
     try {
       const { id, season, episode } = content;
       const detail = (await this.getDetail(id)).result;
-      console.log(`ONETOUCHTV episode detail | ${JSON.stringify(detail)}`);
       if (!detail) return null;
       const releaseDate =
-        new Date(detail.year).toISOString() ||
-        new Date(detail.year).toISOString() ||
-        new Date().toISOString();
-      console.log(
-        `ONETOUCHTV episode detail | ${detail.title} S${season}E${episode} - ${releaseDate}`,
-      );
+        new Date(detail.year).toISOString() || new Date().toISOString();
       const videos: MetaVideo[] = detail.episodes.map((ep) => {
         const video = {
           id: `${Prefix.ONETOUCHTV}:${id}:${season}:${ep.episode}`,
@@ -222,7 +227,7 @@ export class OnetouchtvScrapper extends BaseProvider {
         };
         return video;
       });
-      return {
+      const meta: MetaDetail = {
         id: id,
         type: type,
         name: detail.title,
@@ -236,6 +241,7 @@ export class OnetouchtvScrapper extends BaseProvider {
         genres: detail.genres,
         videos: videos,
       };
+      return meta;
     } catch (error) {
       this.logger.error(`Failed to get meta for ${content.title} | ${error}`);
       return null;
@@ -247,28 +253,33 @@ export class OnetouchtvScrapper extends BaseProvider {
     config: UserConfig,
   ): Promise<Stream[]> {
     try {
-      const { title, type, year, season, episode, id, altTitle } = content;
-      const streamKey = `streams:${this.name}:${type}:${id}:${season}:${episode}`;
+      const { title, type, year, season, episode, onetouchtvId } = content;
+      const streamKey = `streams:${type}:${this.name}:${title}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
-      const search = await this.searchTitle(title, year, season);
-      const searchResult = search.result[0];
-      if (!searchResult) return [];
-      const detail = await this.getDetail(searchResult.id);
+      let detail = null;
+      if (onetouchtvId) {
+        detail = await this.getDetail(onetouchtvId);
+      } else {
+        const search = await this.searchTitle(title, year, season);
+        const searchResult = search.result[0];
+        if (!searchResult) return [];
+        detail = await this.getDetail(searchResult.id);
+      }
       if (!detail) return [];
       const identifier = detail.result.episodes[0]?.identifier;
-      const onetouchtvId = identifier || searchResult.id;
+      const episodeId = identifier || detail.result.id;
       const episodeDetail = await this.getEpisode(
-        onetouchtvId,
+        episodeId,
         episode?.toString() || "1",
       );
       const streams = await Promise.all(
-        episodeDetail.result.sources.map(async (source) => {
+        episodeDetail.result.sources.map(async (source, index) => {
           const info = config.info
             ? await parseStreamInfo(source.url)
             : undefined;
           const formatTitle = this.formatStreamTitle(
-            searchResult.title,
+            detail.result.title,
             year,
             season,
             episode,
@@ -280,13 +291,13 @@ export class OnetouchtvScrapper extends BaseProvider {
             title: formatTitle,
             behaviorHints: {
               notWebReady: true,
-              bingeGroup: `${this.displayName}-${this.name}`,
+              bingeGroup: `${this.displayName}-${this.name}-${index}`,
             },
           };
           return stream;
         }),
       );
-      if (streams) cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+      if (streams.length > 0) cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
       return streams;
     } catch (error) {
       this.logger.error(`Fail to get streams ${content.title} | ${error}`);
@@ -295,12 +306,22 @@ export class OnetouchtvScrapper extends BaseProvider {
   }
 
   async getSubtitles(content: ContentDetail): Promise<Subtitle[]> {
-    const { title, type, year, season, episode, id, altTitle } = content;
-    const subKey = `subtitles:${this.name}:${type}:${id}:${season}:${episode}`;
+    const { title, type, year, season, episode, id, onetouchtvId } = content;
+    const subKey = `subtitles:${type}:${this.name}:${id}:${season}:${episode}`;
     const cachedSubtitles = cache.get(subKey);
     if (cachedSubtitles) return cachedSubtitles;
+    let detail = null;
+    if (onetouchtvId) {
+      detail = await this.getDetail(onetouchtvId);
+    } else {
+      const search = await this.searchTitle(title, year, season);
+      const searchResult = search.result[0];
+      if (!searchResult) return [];
+      detail = await this.getDetail(searchResult.id);
+    }
+    const epId = detail.result.episodes[0]?.identifier || detail.result.id;
     const episodeDetail = await this.getEpisode(
-      content.id,
+      epId,
       content.episode?.toString() || "1",
     );
     const subtitles = episodeDetail.result.track.map((source) => {
@@ -314,7 +335,7 @@ export class OnetouchtvScrapper extends BaseProvider {
       };
       return subtitle;
     });
-    if (subtitles) cache.set(subKey, subtitles, 4 * 60 * 60 * 1000);
+    if (subtitles.length > 0) cache.set(subKey, subtitles, 4 * 60 * 60 * 1000);
     return subtitles;
   }
 
@@ -358,8 +379,8 @@ export class OnetouchtvScrapper extends BaseProvider {
 import crypto from "crypto";
 import { cache } from "../utils/cache.js";
 import { matchTitle } from "../utils/fuse.js";
-import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { parseStreamInfo } from "../utils/info.js";
+import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 const KEY_HEX = Buffer.from(
   "Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ2ZjY2NjQ0OTZlNjk3NDU2NjU2Mzc0NmY3MjUzNzQ2ZA==",
   "base64",

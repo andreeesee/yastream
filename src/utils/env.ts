@@ -26,7 +26,7 @@ const envSchema = z.object({
   MEDIAFLOW_PROXY_PASSWORD: z.string().optional().default(""),
 
   // Analytics: Coerces "1"/"0" or "true"/"false" to boolean
-  ENABLE_ANALYTICS: z.coerce.boolean(),
+  ENABLE_ANALYTICS: z.coerce.boolean().default(false),
 });
 
 // Validate process.env

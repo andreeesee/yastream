@@ -154,7 +154,7 @@ class TMDBService extends BaseMeta {
         if (detail?.imdbId) {
           tv.imdbId = detail?.imdbId;
         }
-        this.logger.log(`Search | ${tv.title} ${tv.year} ${tv.imdbId}`);
+        this.logger.log(`Search | ${tv.title} ${tv.year} ${tv.imdbId || ""}`);
         if (images) {
           if (images.logos.length > 0) {
             const filePath =

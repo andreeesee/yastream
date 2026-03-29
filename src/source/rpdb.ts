@@ -14,9 +14,9 @@ export async function getRpdbPoster(
   const key = ENV.RPDB_API_KEY;
   let url = fallbackUrl;
   if (prefix === Prefix.IMDB) {
-    url = `${baseUrl}/${key}/imdb/poster-default/${id}.jpg`;
+    url = `${baseUrl}/${key}/imdb/poster-default/${id}.jpg?fallback=true`;
   } else {
-    url = `${baseUrl}/${key}/${prefix}/poster-default/${typeParam}${id}.jpg`;
+    url = `${baseUrl}/${key}/${prefix}/poster-default/${typeParam}${id}.jpg?fallback=true`;
   }
   if (await axiosHead<boolean>(url)) return url;
   return fallbackUrl;

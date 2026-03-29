@@ -89,11 +89,20 @@ function createSearchList(title: string, season?: number, year?: number) {
   const searchTitles = [title];
   if (season) {
     searchTitles.push(
-      ...[`${title} Season ${season}`, `${title} ${season} Season`],
+      ...[
+        `${title} ${season}`,
+        `${title} Season ${season}`,
+        `${title} ${season} Season`,
+      ],
     );
   }
   if (year) {
     searchTitles.push(`${title} ${year}`);
+  }
+  if (season && year) {
+    searchTitles.push(
+      ...[`${title} ${season} ${year}`, `${title} Season ${season} ${year}`],
+    );
   }
   return searchTitles;
 }

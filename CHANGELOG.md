@@ -1,3 +1,12 @@
+# v0.3.1 2026-03-29
+
+- Improve caching and error handling
+- Update healthcheck, less aggressive
+- Update analytic to know if there is bottleneck or DOS
+- Add rate limit per ip and for external request
+- Rotate different sites for availability
+- Show episode 0 if have
+
 # v0.3.0 2026-03-07
 
 - Add onetouchtv to provider list for catalog and stream

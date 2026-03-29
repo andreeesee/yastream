@@ -79,9 +79,8 @@ export class KkphimScraper extends BaseProvider {
     config: UserConfig,
   ): Promise<Stream[]> {
     try {
-      const { title, type, year, season, episode, tmdbId, id, altTitle } =
-        content;
-      const streamKey = `streams:${this.name}:${type}:${title}:${season}:${episode}`;
+      const { title, type, year, season, episode, tmdbId } = content;
+      const streamKey = `streams:${type}:${this.name}:${title}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
       let data = null;

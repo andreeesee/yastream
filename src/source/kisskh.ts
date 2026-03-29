@@ -7,7 +7,6 @@ import {
   Stream,
   Subtitle,
 } from "@stremio-addon/sdk";
-import axios from "axios";
 import * as cheerio from "cheerio";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
@@ -76,7 +75,17 @@ const KISSKH_COUNTRY: Record<string, string> = {
 };
 
 class KissKHScraperr extends BaseProvider {
+  readonly urls = [
+    "https://kisskh.co",
+    "https://kisskh.do",
+    // "https://kisskh.id",
+    "https://kisskh.ovh",
+  ];
   readonly baseUrl: string = "https://kisskh.co";
+  getBaseUrl() {
+    const randomIndex = Math.floor(Math.random() * this.urls.length);
+    return this.urls[randomIndex];
+  }
   readonly supportedPrefix: Prefix[] = [
     Prefix.IMDB,
     Prefix.TMDB,
@@ -87,13 +96,21 @@ class KissKHScraperr extends BaseProvider {
   private readonly pageSize = 20;
   private readonly subGuid: string = "VgV52sWhwvBSf8BsM3BRY9weWiiCbtGp";
   private readonly viGuid: string = "62f176f3bb1b5b8e70e39932ad34a0c7";
-  private readonly searchUrl: string =
-    this.baseUrl + "/api/DramaList/Search?q=";
-  private readonly exploreUrl: string = this.baseUrl + "/api/DramaList/List";
-  private readonly detailUrl: string = this.baseUrl + "/api/DramaList/Drama/";
-  private readonly episodeUrl: string =
-    this.baseUrl + "/api/DramaList/Episode/{id}.png?kkey=";
-  private readonly subUrl: string = this.baseUrl + "/api/Sub/{id}?kkey=";
+  private getSearchUrl() {
+    return this.getBaseUrl() + "/api/DramaList/Search?q=";
+  }
+  private getExploreUrl() {
+    return this.getBaseUrl() + "/api/DramaList/List";
+  }
+  private getDetailUrl() {
+    return this.getBaseUrl() + "/api/DramaList/Drama/";
+  }
+  private getEpisodeUrl() {
+    return this.getBaseUrl() + "/api/DramaList/Episode/{id}.png?kkey=";
+  }
+  private getSubUrl() {
+    return this.getBaseUrl() + "/api/Sub/{id}?kkey=";
+  }
   private readonly TYPE: Record<ContentType, string> = {
     series: "1",
     movie: "2",
@@ -102,10 +119,11 @@ class KissKHScraperr extends BaseProvider {
   };
   private tokenJsCode: string | null = null;
   private nsfwIds = new Set([
-    12563, 12519, 12518, 12517, 12516, 12515, 12514, 12513, 12510, 12504, 12503,
-    12495, 12491, 12480, 12413, 12378, 12332, 12331, 12330, 12314, 12285, 12284,
-    12200, 12179, 12177, 12129, 12127, 12125, 12124, 12123, 12106, 11915, 11834,
-    11782, 11544, 11519, 11518, 11517, 11511, 11509, 11436, 10942, 10761,
+    12660, 12639, 12563, 12519, 12518, 12517, 12516, 12515, 12514, 12513, 12510,
+    12504, 12503, 12495, 12491, 12480, 12413, 12378, 12332, 12331, 12330, 12314,
+    12285, 12284, 12200, 12179, 12177, 12130, 12129, 12127, 12125, 12124, 12123,
+    12106, 11915, 11834, 11782, 11544, 11519, 11518, 11517, 11511, 11509, 11436,
+    10942, 10761,
   ]);
   private kisskhTmdb = new Map([[12422, "307602"]]);
 
@@ -193,23 +211,20 @@ class KissKHScraperr extends BaseProvider {
     if (countryName == "US") {
       t = holliwood;
     }
-    const country = countryName
-      ? KISSKH_COUNTRY[countryName]
-      : KISSKH_COUNTRY["Korean"];
-    const pageSize = 20;
+    const country = KISSKH_COUNTRY[countryName!];
     let urls = [];
     let urlNum = 1;
-    let page = this.getPage(pageSize, skip, urlNum);
+    let page = this.getPage(this.pageSize, skip, urlNum);
     if (type === "series" || t === holliwood) {
       urlNum = 2;
-      page = this.getPage(pageSize, skip, urlNum);
+      page = this.getPage(this.pageSize, skip, urlNum);
       urls.push(
-        this.exploreUrl +
+        this.getExploreUrl() +
           `?page=${page}&type=${t}&sub=0&country=${country}&status=${ongoing}&order=2`,
       );
     }
     urls.push(
-      this.exploreUrl +
+      this.getExploreUrl() +
         `?page=${page}&type=${t}&sub=0&country=${country}&status=${completed}&order=2`,
     );
 
@@ -260,7 +275,7 @@ class KissKHScraperr extends BaseProvider {
         // if (tmdbDetail?.imdbId) {
         //   id = `${tmdbDetail.imdbId}`;
         // }
-        const metaPreview: MetaDetail = {
+        const metaDetail: MetaDetail = {
           id: id,
           name: kissItem.title,
           type: type,
@@ -269,12 +284,12 @@ class KissKHScraperr extends BaseProvider {
         };
 
         if (type === "movie") {
-          metaPreview.behaviorHints = {
+          metaDetail.behaviorHints = {
             defaultVideoId: `${id}:1:1`,
           };
-          return metaPreview;
+          return metaDetail;
         }
-        return metaPreview;
+        return metaDetail;
       }),
     );
     return metas;
@@ -292,12 +307,9 @@ class KissKHScraperr extends BaseProvider {
     }
     const season = 1;
     const date = new Date(detail.releaseDate).toISOString();
-    const videos: MetaVideo[] = detail.episodes.map((_, index) => {
-      const episodeNum = index + 1;
+    const videos: MetaVideo[] = detail.episodes.map((ep, index) => {
+      const episodeNum = ep.number;
       let id = `kisskh:${detail.id}:${season}:${episodeNum}`;
-      // if (tmdbDetail?.imdbId) {
-      //   id = `${tmdbDetail.imdbId}:${season}:${episodeNum}`;
-      // }
       // In Kisskh sometimes movie also has multiple episodes
       return {
         id: id,
@@ -310,11 +322,8 @@ class KissKHScraperr extends BaseProvider {
         season: season,
         episode: episodeNum,
       };
-    });
+    }).sort((a, b) => a.episode - b.episode);
     let metaId = `${Prefix.KISSKH}:${detail.id}`;
-    // if (tmdbDetail?.imdbId) {
-    //   metaId = `${tmdbDetail.imdbId}`;
-    // }
     const meta: MetaDetail = {
       id: metaId,
       name: detail.title,
@@ -334,38 +343,57 @@ class KissKHScraperr extends BaseProvider {
     content: ContentDetail,
     config: UserConfig,
   ): Promise<Stream[]> {
-    const { title, type, year, season, episode, id, altTitle } = content;
+    const { title, type, year, season, episode, id, kisskhId, altTitle } =
+      content;
     try {
-      const streamKey = `streams:${this.name}:${type}:${id}:${season}:${episode}`;
+      const streamKey = `streams:${type}:${this.name}:${id}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
-
-      const searchResult = await this.searchContent(
-        title,
-        type,
-        year,
-        season,
-        true,
-        altTitle,
-      );
-      if (!searchResult[0]) {
-        this.logger.log("No results");
-        return [];
+      if (!kisskhId) {
+        const searchResult = await this.searchContent(
+          title,
+          type,
+          year,
+          season,
+          true,
+          altTitle,
+        );
+        if (!searchResult[0]) {
+          this.logger.log("No results");
+          return [];
+        }
+        const search = searchResult[0];
+        const searchId = search.id;
+        const searchTitle = search.title;
+        const streams = await this.generateStreamsAndSubtitles(
+          searchId,
+          searchTitle,
+          content,
+          config,
+        );
+        if (streams) cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+        return streams;
+      } else {
+        const streams = await this.generateStreamsAndSubtitles(
+          parseInt(kisskhId),
+          title,
+          content,
+          config,
+        );
+        if (streams.length > 0)
+          cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+        return streams;
       }
-      const streams = await this.generateStreamsAndSubtitles(
-        searchResult[0],
-        content,
-        config,
-      );
-      if (streams) cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
-      return streams;
     } catch (error: any) {
-      this.logger.error(`Error | ${error.message}`);
+      this.logger.error(`${error.message}`);
       return [];
     }
   }
 
   async getSubtitles(content: ContentDetail): Promise<Subtitle[]> {
+    const subtitleKey = `subtitles:${content.type}:${this.name}:${content.id}:${content.season}:${content.episode}`;
+    let cacheSubtitles = cache.get(subtitleKey);
+    if (cacheSubtitles) return cacheSubtitles;
     const search = await this.searchContent(
       content.title,
       content.type,
@@ -409,18 +437,19 @@ class KissKHScraperr extends BaseProvider {
   }
 
   async generateStreamsAndSubtitles(
-    searchResult: SearchResult,
+    kisskhId: number,
+    title: string,
     content: ContentDetail,
     config: UserConfig,
   ): Promise<Stream[]> {
     const { episode, id, season, year, type } = content;
-    const episodeId = await this._getEpisode(searchResult.id, type, episode);
+    const episodeId = await this._getEpisode(kisskhId, type, episode);
     const token = await this._getToken(episodeId, this.viGuid);
     const stream = await this._getStream(episodeId, token);
     if (!stream) return [];
     if (!stream.Video) return [];
     const url = this._fixUrl(stream.Video);
-    const subtitleKey = `subtitles:kisskh:${type}:${id}:${season}:${episode}`;
+    const subtitleKey = `subtitles:${type}:${this.name}:${id}:${season}:${episode}`;
     // Handle subtitles
     let subtitles = cache.get(subtitleKey);
     if (subtitles) cache.set(subtitleKey, subtitles);
@@ -430,7 +459,7 @@ class KissKHScraperr extends BaseProvider {
     }
     const info = config.info ? await parseStreamInfo(url) : undefined;
     const formatTitle = this.formatStreamTitle(
-      searchResult.title,
+      title,
       year,
       season,
       episode,
@@ -452,14 +481,14 @@ class KissKHScraperr extends BaseProvider {
 
   private async _getToken(episodeId: string, uid: string): Promise<string> {
     if (!this.tokenJsCode) {
-      const html = await axiosGet<string>(this.baseUrl + "/index.html");
+      const html = await axiosGet<string>(this.getBaseUrl() + "/index.html");
       if (!html)
-        throw new Error(
-          `[KISSKH] Failed to fetch index.html for token generation`,
-        );
+        throw new Error(`Failed to fetch index.html for token generation`);
       const $ = cheerio.load(html);
       const scriptSrc = $('script[src*="common"]').attr("src");
-      const { data: jsCode } = await axios.get(this.baseUrl + "/" + scriptSrc);
+      const jsCode = await axiosGet<string>(
+        this.getBaseUrl() + "/" + scriptSrc,
+      );
       this.tokenJsCode = jsCode;
     }
 
@@ -471,11 +500,11 @@ class KissKHScraperr extends BaseProvider {
     try {
       const token = eval(sandbox);
       if (!token) {
-        throw new Error(`[KISSKH] Token generation failed`);
+        throw new Error(`Token generation failed`);
       }
       return token;
     } catch (e) {
-      throw new Error(`[KISSKH] Token generation failed | ${e}`);
+      throw new Error(`Token generation failed | ${e}`);
     }
   }
 
@@ -486,7 +515,7 @@ class KissKHScraperr extends BaseProvider {
     isFilter: boolean = true,
     altTitle?: string,
   ): Promise<SearchResult[]> {
-    const url = `${this.searchUrl}${title}&type=0`;
+    const url = `${this.getSearchUrl()}${title}&type=0`;
     this.logger.log(`GET search | ${url}`);
     const searchData = await axiosGet(url);
     if (!searchData) {
@@ -507,7 +536,7 @@ class KissKHScraperr extends BaseProvider {
   }
 
   public async getDetail(kisskhId: string): Promise<KisskhDetail> {
-    const url = `${this.detailUrl}${kisskhId}`;
+    const url = `${this.getDetailUrl()}${kisskhId}`;
     this.logger.log(`GET detail | ${url}`);
     const episodesData = await axiosGet<KisskhDetail>(url, {
       headers: this.headers,
@@ -525,7 +554,7 @@ class KissKHScraperr extends BaseProvider {
       case "series":
         if (!episode) {
           this.logger.error("Episode number required for series");
-          throw new Error(`[KISSKH] Episode number required for series`);
+          throw new Error(`Episode number required for series`);
         }
         break;
       default:
@@ -551,9 +580,9 @@ class KissKHScraperr extends BaseProvider {
   }
 
   private async _getStream(episodeId: string, token: string) {
-    const url = this.episodeUrl.replace("{id}", episodeId) + token;
+    const url = this.getEpisodeUrl().replace("{id}", episodeId) + token;
     this.logger.log(`GET stream | ${url}`);
-    const stream = await axiosGet<StreamResponse>(url);
+    const stream = await axiosGet<StreamResponse>(url, {timeout: 15000});
     if (!stream) return null;
     this.logger.log(`Stream Url | ${stream.Video}`);
     return stream;
@@ -561,7 +590,7 @@ class KissKHScraperr extends BaseProvider {
 
   private async _getSubtitles(episodeId: string): Promise<Subtitle[]> {
     const token = await this._getToken(episodeId, this.subGuid);
-    const subtitleUrl = this.subUrl.replace("{id}", episodeId) + token;
+    const subtitleUrl = this.getSubUrl().replace("{id}", episodeId) + token;
     this.logger.log(`GET subtitles | ${subtitleUrl}`);
     const subtitleDatas = await axiosGet<SubResponse[]>(subtitleUrl);
     if (!subtitleDatas) return [];
@@ -595,11 +624,11 @@ class KissKHScraperr extends BaseProvider {
     const domain = ENV.DOMAIN;
     const port = ENV.PORT;
     const protocol = domain === "localhost" ? "http" : "https";
-    const baseUrl =
+    const url =
       domain === "localhost"
         ? `${protocol}://${domain}:${port}`
         : `${protocol}://${domain}`;
-    return `${baseUrl}/subtitle/${originalUrl}`;
+    return `${url}/subtitle/${originalUrl}`;
   }
 
   private _fixUrl(url: string): string {

@@ -155,12 +155,12 @@ export class IDramaScraper extends BaseProvider {
     content: ContentDetail,
     config: UserConfig,
   ): Promise<Stream[]> {
-    const { title, type, year, season, episode, id, altTitle } = content;
+    const { title, type, year, season, episode, id } = content;
     try {
       if (!id) return [];
       this.logger.log(`Stream | ${title} ${id}`);
       const postId = id;
-      const streamKey = `streams:${title}:${type}:${season}:${episode}`;
+      const streamKey = `streams:${type}:${id}:${season}:${episode}`;
       const cacheStreams: Stream[] = cache.get(streamKey);
       if (cacheStreams) {
         return cacheStreams;

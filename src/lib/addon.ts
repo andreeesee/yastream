@@ -1,6 +1,7 @@
 import {
   AddonBuilder,
   AddonCatalogHandlerArgs,
+  AddonInterface,
   Cache,
   CatalogHandlerArgs,
   MetaDetail,
@@ -120,62 +121,93 @@ async function getContent(
       // id | idrama:postId:season:episode
       const [prefix, idramaId, season, episode] = args.id.split(":");
       if (!idramaId) return null;
-      const contentKey = `content:tvdb:${idramaId}`;
+      const contentKey = `content:idrama:${idramaId}`;
       const cacheContent = cache.get(contentKey);
       let content: ContentDetail | null = cacheContent;
-      if (content) {
-        return content;
+      if (!content) {
+        const detail = await idrama.getStreamDetail(idramaId);
+        if (!detail) return null;
+        const { title, year } = detail;
+        content = {
+          id: idramaId,
+          idramaId: idramaId,
+          title: title,
+          year: year,
+          type: args.type,
+          season: season ? parseInt(season) : 1,
+          episode: episode ? parseInt(episode) : 1,
+        };
+        if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
       }
-      const detail = await idrama.getStreamDetail(idramaId);
-      if (!detail) return null;
-      const { title, year } = detail;
-      content = {
-        id: idramaId,
-        idramaId: idramaId,
-        title: title,
-        year: year,
-        type: args.type,
-        season: season ? parseInt(season) : 1,
-        episode: episode ? parseInt(episode) : 1,
-      };
-      cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+      if (!content) {
+        logger.error(`Not found IDrama ${idramaId}`);
+        return null;
+      }
+      if (season) content.season = parseInt(season);
+      if (episode) content.episode = parseInt(episode);
       return content;
     }
     case args.id.startsWith(Prefix.KISSKH): {
       // id | kisskh:episodeId:season:episode
       const [prefix, kisskhId, season, episode] = args.id.split(":");
       if (!kisskhId) return null;
-      const { title, releaseDate } = await kisskh.getDetail(kisskhId);
-      const extracted = extractTitleYear(title);
-      const pureTitle = extracted.title;
-      const year = extracted.year || new Date(releaseDate).getFullYear();
-      const content: ContentDetail = {
-        id: kisskhId,
-        kisskhId: kisskhId,
-        title: pureTitle,
-        year: year,
-        type: args.type,
-        season: season ? parseInt(season) : 1,
-        episode: episode ? parseInt(episode) : 1,
-      };
+      const contentKey = `content:kisskh:${kisskhId}`;
+      const cacheContent = cache.get(contentKey);
+      let content: ContentDetail | null = cacheContent;
+      if (!content) {
+        const { title, releaseDate } = await kisskh.getDetail(kisskhId);
+        const extracted = extractTitleYear(title);
+        const pureTitle = extracted.title;
+        const year = extracted.year || new Date(releaseDate).getFullYear();
+        content = {
+          id: kisskhId,
+          kisskhId: kisskhId,
+          title: pureTitle,
+          year: year,
+          type: args.type,
+          season: season ? parseInt(season) : 1,
+          episode: episode ? parseInt(episode) : 1,
+        };
+        cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+      }
+      if (!content) {
+        logger.error(`Not found kisskh ${kisskhId}`);
+        return null;
+      }
+      content.season = season ? parseInt(season) : 1;
+      content.episode = episode ? parseInt(episode) : 1;
       return content;
     }
     case args.id.startsWith(Prefix.ONETOUCHTV): {
       // id | onetouchtv:detailId:season:episode
       const [prefix, onetouchtvId, season, episode] = args.id.split(":");
       if (!onetouchtvId) return null;
-      const { title, year } = (await onetouchtv.getDetail(onetouchtvId)).result;
-      const extracted = extractTitleYear(title);
-      const pureTitle = extracted.title;
-      const yearFormat = extracted.year || parseInt(year);
-      const content: ContentDetail = {
-        id: onetouchtvId,
-        title: pureTitle,
-        year: yearFormat,
-        type: args.type,
-        season: season ? parseInt(season) : 1,
-        episode: episode ? parseInt(episode) : 1,
-      };
+      const contentKey = `content:onetouchtv:${onetouchtvId}`;
+      const cacheContent = cache.get(contentKey);
+      let content: ContentDetail | null = cacheContent;
+      if (!content) {
+        const { title, year } = (await onetouchtv.getDetail(onetouchtvId))
+          .result;
+        const extracted = extractTitleYear(title);
+        const pureTitle = extracted.title;
+        const yearFormat = extracted.year || parseInt(year);
+        content = {
+          id: onetouchtvId,
+          onetouchtvId: onetouchtvId,
+          title: pureTitle,
+          year: yearFormat,
+          type: args.type,
+          season: season ? parseInt(season) : 1,
+          episode: episode ? parseInt(episode) : 1,
+        };
+        cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+      }
+      if (!content) {
+        logger.error(`Not found onetouchtv ${onetouchtvId}`);
+        return null;
+      }
+      content.season = season ? parseInt(season) : 1;
+      content.episode = episode ? parseInt(episode) : 1;
       return content;
     }
   }
@@ -190,20 +222,16 @@ export async function buildCatalogHandler(
   // id | idrama
   logger.log(`Catalog | ${args.id}`);
   try {
-    const catalogKey = `catalog:${args.type}:${args.id}:${args.extra.skip}:${args.extra.search}:${config.nsfw}`;
+    const { id, type } = args;
+    const { skip, search } = args.extra;
+    const catalogKey = `catalog:${type}:${id}:${skip}:${search}:${config.nsfw}`;
     const cacheCatalog = cache.get(catalogKey);
     if (cacheCatalog) return cacheCatalog;
-    const filteredProviders = filterProvider(
-      providers,
-      args.id,
-      config,
-      "catalog",
-    );
-    const [prefix] = args.id.split(".");
+    const filteredProviders = filterProvider(providers, id, config, "catalog");
+    const [prefix] = id.split(".");
     if (!prefix) {
       return { metas: [] };
     }
-    const isSearch = args.extra.search;
     const providerName = prefix as Provider;
     const provider = providersMap.get(providerName);
     if (!provider) {
@@ -214,11 +242,12 @@ export async function buildCatalogHandler(
       logger.error(`Provider ${providerName} is not selected`);
       return { metas: [] };
     }
-    const metas = isSearch
+    const metas = search
       ? await provider.searchCatalog(args, config)
       : await provider.getCatalog(args, config);
     const metaPreviews = { metas: metas, cacheMaxAge: 4 * 60 * 60 };
-    cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
+    if (metas.length > 0)
+      cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
     return metaPreviews;
   } catch (error) {
     logger.error(`Catalog handler error: ${error}`);
@@ -231,8 +260,8 @@ export async function buildMetaHandler(
   config: UserConfig = defaultConfig,
 ) {
   logger.log(`Meta | ${args.id}`);
-
-  const metaKey = `meta:${args.type}:${args.id}`;
+  const { id, type } = args;
+  const metaKey = `meta:${type}:${id}`;
   const cacheMeta = cache.get(metaKey);
   if (cacheMeta) return cacheMeta;
 
@@ -270,8 +299,8 @@ export async function buildMetaHandler(
     const detail = await provider.getMeta(content, args.type);
     if (detail) {
       meta = { meta: detail };
+      cache.set(metaKey, meta, 4 * 60 * 60 * 1000);
     }
-    cache.set(metaKey, meta, 4 * 60 * 60 * 1000);
     return meta;
   } catch (error) {
     logger.error(`Meta handler error: ${error}`);
@@ -298,13 +327,15 @@ export async function buildStreamHandler(
       config,
       "stream",
     );
-    const streams = await Promise.all(
-      filteredProviders.map(async (provider) => {
-        return await provider.getStreams(content, config);
-      }),
-    );
-    const streamResults = { streams: streams.flat() };
-    cache.set(streamKey, streamResults);
+    const streams = (
+      await Promise.all(
+        filteredProviders.map(async (provider) => {
+          return await provider.getStreams(content, config);
+        }),
+      )
+    ).flat();
+    const streamResults = { streams: streams };
+    if (streams.length > 0) cache.set(streamKey, streamResults);
     return streamResults;
   } catch (error) {
     logger.error(`Streams handler error: ${error}`);
@@ -318,35 +349,39 @@ export async function buildSubtitleHandler(
 ): Promise<{ subtitles: Subtitle[] }> {
   logger.log(`Subtitles | ${args.id}`);
   try {
-    const streamKey = `subtitles:${args.type}:${args.id}`;
-    const cacheStreams = cache.get(streamKey);
-    if (cacheStreams) return cacheStreams;
+    const { id, type } = args;
+    const subtitleKey = `subtitles:${type}:${id}:${JSON.stringify(config.stream)}`;
+    const cacheAllSubtitles = cache.get(subtitleKey);
+    if (cacheAllSubtitles) return cacheAllSubtitles;
     const content = await getContent(args);
     if (content == null) {
       return { subtitles: [] };
     }
-    const { type, season, episode } = content;
+    const { season, episode } = content;
     const filteredProviders = filterProvider(
       providers,
-      args.id,
+      id,
       config,
       "subtitles",
     );
     const results = await Promise.allSettled(
       filteredProviders.map(async (provider) => {
-        const subtitleKey = `subtitles:${provider.name.toLowerCase()}:${type}:${content.id}:${season}:${episode}`;
-        const cacheSubtitles: Subtitle[] = cache.get(subtitleKey);
+        const providerSubtitleKey = `subtitles:${type}:${provider.name}:${content.id}:${season}:${episode}`;
+        const cacheSubtitles: Subtitle[] = cache.get(providerSubtitleKey);
         if (cacheSubtitles) return cacheSubtitles;
         const providerSubtitles = await provider.getSubtitles(content);
         if (providerSubtitles) return providerSubtitles;
         return [];
       }),
     );
-    const subtitles = results
+    const subsResults = results
       .filter((r) => r.status === "fulfilled")
       .map((r) => r.value)
       .flat();
-    return { subtitles: subtitles.flat() };
+    const subtitleResults = { subtitles: subsResults.flat() };
+    if (subsResults.length > 0)
+      cache.set(subtitleKey, subtitleResults, 4 * 60 * 60 * 1000);
+    return subtitleResults;
   } catch (error) {
     logger.error(`Subtitles handler error: ${error}`);
     return { subtitles: [] };
@@ -374,20 +409,3 @@ function filterProvider(
     );
   });
 }
-
-// With default manifest
-const builder = new AddonBuilder(buildManifest());
-builder.defineCatalogHandler(async (args) => {
-  return await buildCatalogHandler(args);
-});
-builder.defineMetaHandler(async (args) => {
-  return await buildMetaHandler(args);
-});
-builder.defineStreamHandler(async (args) => {
-  return await buildStreamHandler(args);
-});
-builder.defineSubtitlesHandler(async (args) => {
-  return await buildSubtitleHandler(args);
-});
-
-export default builder.getInterface();

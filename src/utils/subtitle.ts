@@ -1,6 +1,6 @@
-import axios from "axios";
 import { Buffer } from "buffer";
 import * as crypto from "crypto";
+import { axiosGet } from "./axios.js";
 import { cache } from "./cache.js";
 import { Logger } from "./logger.js";
 
@@ -80,12 +80,12 @@ export async function getSetDecryptedSubtitle(
   }
 
   try {
-    const response = await axios.get(subtitleUrl, {
+    const data = await axiosGet<string>(subtitleUrl, {
       responseType: "text",
-      timeout: 10000,
+      timeout: 20000,
     });
-    const encryptedData = response.data as string;
-
+    const encryptedData = data;
+    if (!encryptedData) return null;
     logger.log(`Decrypt | ${subtitleUrl}`);
     const format = detectFormat(subtitleUrl);
     const { key, iv } = getKeyForFormat(format);
