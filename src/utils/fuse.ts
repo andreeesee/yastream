@@ -1,6 +1,7 @@
 import Fuse, { FuseResult, IFuseOptions } from "fuse.js";
 import { token_sort_ratio } from "fuzzball";
 import { Logger } from "./logger.js";
+import { ENV } from "./env.js";
 
 interface SearchItem<T> {
   original: T;
@@ -72,8 +73,7 @@ export function matchTitle<T extends Search>(
   }
   const candidateTitle = best.fuseResult.item.normalizedTitle;
   const tokenScore = token_sort_ratio(best.queryUsed, candidateTitle);
-  const MIN_TOKEN_SCORE = 80;
-  if (tokenScore <= MIN_TOKEN_SCORE) {
+  if (tokenScore <= ENV.MIN_MATCHING_SCORE) {
     throw new Error(
       `Token-set score too low (${tokenScore}) | "${best.queryUsed}" -> "${candidateTitle}"`,
     );

@@ -27,6 +27,9 @@ const envSchema = z.object({
 
   // Analytics: Coerces "1"/"0" or "true"/"false" to boolean
   ENABLE_ANALYTICS: z.coerce.boolean().default(false),
+
+  // Min title matching score (higher mean only very similar title matches)
+  MIN_MATCHING_SCORE: z.coerce.number().min(0).max(100).default(75),
 });
 
 // Validate process.env
