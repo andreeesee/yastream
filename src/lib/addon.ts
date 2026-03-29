@@ -1,13 +1,12 @@
 import {
-  AddonBuilder,
   AddonCatalogHandlerArgs,
-  AddonInterface,
   Cache,
   CatalogHandlerArgs,
   MetaDetail,
   MetaHandlerArgs,
   MetaPreview,
   ShortManifestResource,
+  Stream,
   StreamHandlerArgs,
   Subtitle,
   SubtitlesHandlerArgs,
@@ -26,12 +25,7 @@ import { tvdb } from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
 import { extractTitleYear } from "../utils/fuse.js";
 import { Logger } from "../utils/logger.js";
-import {
-  buildManifest,
-  defaultConfig,
-  Prefix,
-  UserConfig,
-} from "./manifest.js";
+import { defaultConfig, Prefix, UserConfig } from "./manifest.js";
 const kisskh = new KissKHScraper(Provider.KISSKH);
 const idrama = new IDramaScraper(Provider.IDRAMA);
 const kkphim = new KkphimScraper(Provider.KKPHIM);
@@ -245,9 +239,11 @@ export async function buildCatalogHandler(
     const metas = search
       ? await provider.searchCatalog(args, config)
       : await provider.getCatalog(args, config);
-    const metaPreviews = { metas: metas, cacheMaxAge: 4 * 60 * 60 };
-    if (metas.length > 0)
+    let metaPreviews: { metas: MetaPreview[] } & Cache = { metas: metas };
+    if (metas.length > 0) {
+      metaPreviews = { metas: metas, cacheMaxAge: 2 * 60 * 60 };
       cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
+    }
     return metaPreviews;
   } catch (error) {
     logger.error(`Catalog handler error: ${error}`);
@@ -258,19 +254,20 @@ export async function buildCatalogHandler(
 export async function buildMetaHandler(
   args: MetaHandlerArgs,
   config: UserConfig = defaultConfig,
-) {
+): Promise<{ meta: MetaDetail } & Cache> {
   logger.log(`Meta | ${args.id}`);
   const { id, type } = args;
   const metaKey = `meta:${type}:${id}`;
   const cacheMeta = cache.get(metaKey);
   if (cacheMeta) return cacheMeta;
 
-  const defaultMeta: { meta: MetaDetail } = {
+  const defaultMeta: { meta: MetaDetail } & Cache = {
     meta: {
       id: args.id,
       type: args.type,
       name: "You should use AIOMetadata for this metadata. Fix by order AIOMetadata to be higher than yastream",
     },
+    cacheMaxAge: 1 * 60 * 60,
   };
   try {
     const content = await getContent(args);
@@ -298,7 +295,7 @@ export async function buildMetaHandler(
     let meta = defaultMeta;
     const detail = await provider.getMeta(content, args.type);
     if (detail) {
-      meta = { meta: detail };
+      meta = { meta: detail, cacheMaxAge: 1 * 60 * 60 };
       cache.set(metaKey, meta, 4 * 60 * 60 * 1000);
     }
     return meta;
@@ -311,7 +308,7 @@ export async function buildMetaHandler(
 export async function buildStreamHandler(
   args: StreamHandlerArgs,
   config: UserConfig = defaultConfig,
-) {
+): Promise<{ streams: Stream[] } & Cache> {
   logger.log(`Stream | ${args.id}`);
   try {
     const streamKey = `streams:${args.type}:${args.id}:${JSON.stringify(config.stream)}:${config.info}`;
@@ -334,8 +331,11 @@ export async function buildStreamHandler(
         }),
       )
     ).flat();
-    const streamResults = { streams: streams };
-    if (streams.length > 0) cache.set(streamKey, streamResults);
+    let streamResults: { streams: Stream[] } & Cache = { streams: streams };
+    if (streams.length > 0) {
+      streamResults = { streams: streams, cacheMaxAge: 1 * 60 * 60 };
+      cache.set(streamKey, streamResults);
+    }
     return streamResults;
   } catch (error) {
     logger.error(`Streams handler error: ${error}`);
@@ -346,7 +346,7 @@ export async function buildStreamHandler(
 export async function buildSubtitleHandler(
   args: SubtitlesHandlerArgs,
   config: UserConfig = defaultConfig,
-): Promise<{ subtitles: Subtitle[] }> {
+): Promise<{ subtitles: Subtitle[] } & Cache> {
   logger.log(`Subtitles | ${args.id}`);
   try {
     const { id, type } = args;

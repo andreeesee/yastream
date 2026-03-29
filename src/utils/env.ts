@@ -30,6 +30,9 @@ const envSchema = z.object({
 
   // Min title matching score (higher mean only very similar title matches)
   MIN_MATCHING_SCORE: z.coerce.number().min(0).max(100).default(75),
+
+  // Cache warming
+  WARM_CACHE: z.coerce.boolean().default(true),
 });
 
 // Validate process.env

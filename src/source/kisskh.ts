@@ -79,7 +79,7 @@ class KissKHScraperr extends BaseProvider {
     "https://kisskh.co",
     "https://kisskh.do",
     // "https://kisskh.id",
-    "https://kisskh.ovh",
+    // "https://kisskh.ovh",
   ];
   readonly baseUrl: string = "https://kisskh.co";
   getBaseUrl() {

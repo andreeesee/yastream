@@ -6,6 +6,7 @@
 - Add rate limit per ip and for external request
 - Rotate different sites for availability
 - Show episode 0 if have
+- Add warm cache for popular catalogs
 
 # v0.3.0 2026-03-07
 

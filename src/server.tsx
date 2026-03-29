@@ -1,10 +1,10 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { rateLimiter } from "hono-rate-limiter";
 import { AddonBuilder, createRouter } from "@stremio-addon/sdk";
 import { Umami } from "@umami/node";
 import fs from "fs";
 import { Context, Hono } from "hono";
+import { rateLimiter } from "hono-rate-limiter";
 import { cors } from "hono/cors";
 import path from "path";
 import pkg from "../package.json" with { type: "json" };
@@ -45,7 +45,6 @@ if (ENV.ENABLE_ANALYTICS) {
       "/:configBase64/meta/*",
       "/:configBase64/stream/*",
       "/:configBase64/subtitles/*",
-      "/",
       "/catalog/*",
       "/meta/*",
       "/stream/*",
@@ -334,11 +333,28 @@ app.onError((err, c) => {
   return c.text("Internal Server Error", 500);
 });
 
+async function warmCache() {
+  const defaultCatalogUrls = buildManifest()
+    .catalogs.filter((catalog) => {
+      return !catalog.id.toLowerCase().includes("search");
+    })
+    .map((catalog) => `/catalog/${catalog.type}/${catalog.id}.json`);
+  const warmUrls = ["/manifest.json", ...defaultCatalogUrls];
+  await Promise.all(
+    warmUrls.map((url) => {
+      fetch("http://localhost:" + PORT + url);
+    }),
+  );
+}
 // Start server
 try {
   serve({ fetch: app.fetch, port: PORT, hostname: HOST }, () => {
     logger.log(`yastream running on http://${HOST}:${PORT}`);
   });
+  if (ENV.WARM_CACHE) {
+    await warmCache();
+    logger.log(`Warming cache completed`);
+  }
 } catch (error) {
   logger.log(`Fail to start | ${error}`);
 }
