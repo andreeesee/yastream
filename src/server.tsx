@@ -118,6 +118,12 @@ stremioRoutes.forEach((route) => {
     });
     const addonRouter = createRouter(builder.getInterface());
     const response = await addonRouter(c.req.raw);
+    if (response) {
+      c.header(
+        "Cache-Control",
+        response.headers.get("Cache-Control") || "no-cache",
+      );
+    }
     return response || c.notFound();
   });
 });
@@ -173,6 +179,12 @@ configStremioRoutes.forEach((route) => {
     }
     const customRouter = createRouter(builder.getInterface());
     const response = await customRouter(c.req.raw);
+    if (response) {
+      c.header(
+        "Cache-Control",
+        response.headers.get("Cache-Control") || "no-cache",
+      );
+    }
     return response || c.notFound();
   });
 });

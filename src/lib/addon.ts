@@ -239,9 +239,9 @@ export async function buildCatalogHandler(
     const metas = search
       ? await provider.searchCatalog(args, config)
       : await provider.getCatalog(args, config);
-    let metaPreviews: { metas: MetaPreview[] } & Cache = { metas: metas };
+    const metaPreviews: { metas: MetaPreview[] } & Cache = { metas: metas };
     if (metas.length > 0) {
-      metaPreviews = { metas: metas, cacheMaxAge: 2 * 60 * 60 };
+      metaPreviews.cacheMaxAge = 2 * 60 * 60;
       cache.set(catalogKey, metaPreviews, 4 * 60 * 60 * 1000);
     }
     return metaPreviews;
@@ -267,7 +267,6 @@ export async function buildMetaHandler(
       type: args.type,
       name: "You should use AIOMetadata for this metadata. Fix by order AIOMetadata to be higher than yastream",
     },
-    cacheMaxAge: 1 * 60 * 60,
   };
   try {
     const content = await getContent(args);
@@ -292,10 +291,11 @@ export async function buildMetaHandler(
       logger.error(`Meta provider ${prefix} is not selected`);
       return defaultMeta;
     }
-    let meta = defaultMeta;
+    const meta = defaultMeta;
     const detail = await provider.getMeta(content, args.type);
     if (detail) {
-      meta = { meta: detail, cacheMaxAge: 1 * 60 * 60 };
+      meta.meta = detail;
+      meta.cacheMaxAge = 1 * 60 * 60;
       cache.set(metaKey, meta, 4 * 60 * 60 * 1000);
     }
     return meta;
@@ -331,9 +331,9 @@ export async function buildStreamHandler(
         }),
       )
     ).flat();
-    let streamResults: { streams: Stream[] } & Cache = { streams: streams };
+    const streamResults: { streams: Stream[] } & Cache = { streams: streams };
     if (streams.length > 0) {
-      streamResults = { streams: streams, cacheMaxAge: 1 * 60 * 60 };
+      streamResults.cacheMaxAge = 1 * 60 * 60;
       cache.set(streamKey, streamResults);
     }
     return streamResults;
@@ -378,9 +378,13 @@ export async function buildSubtitleHandler(
       .filter((r) => r.status === "fulfilled")
       .map((r) => r.value)
       .flat();
-    const subtitleResults = { subtitles: subsResults.flat() };
-    if (subsResults.length > 0)
+    const subtitleResults: { subtitles: Subtitle[] } & Cache = {
+      subtitles: subsResults.flat(),
+    };
+    if (subsResults.length > 0) {
+      subtitleResults.cacheMaxAge = 1 * 60 * 60;
       cache.set(subtitleKey, subtitleResults, 4 * 60 * 60 * 1000);
+    }
     return subtitleResults;
   } catch (error) {
     logger.error(`Subtitles handler error: ${error}`);
