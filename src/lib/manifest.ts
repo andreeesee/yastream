@@ -131,9 +131,6 @@ export function buildManifest(config?: UserConfig) {
 
   if (config === defaultConfig) {
     defaultManifest = structuredClone(manifest);
-    defaultManifest.config = [
-      { key: "config", type: "text", default: config64 },
-    ];
     return defaultManifest;
   }
   manifest.config = [{ key: "config", type: "text", default: config64 }];
