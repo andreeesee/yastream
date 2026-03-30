@@ -1,6 +1,7 @@
 // Docs: https://github.com/Stremio/@stremio-addon/sdk/blob/master/docs/api/responses/manifest.md
 import {
   ContentType,
+  FullManifestResource,
   Manifest,
   ManifestCatalog,
   ManifestExtra,
@@ -109,7 +110,12 @@ export function buildManifest(config?: UserConfig) {
   const catalogMap = buildCatalogMap(config.catalogs);
   if (config.catalog && config.catalog.length > 0) {
     manifest.resources.push("catalog");
-    manifest.resources.push("meta");
+    const metaResource: FullManifestResource = {
+      name: "meta",
+      types: ["movie", "series"],
+      idPrefixes: [Prefix.IDRAMA, Prefix.KISSKH, Prefix.ONETOUCHTV],
+    };
+    manifest.resources.push(metaResource);
     config.catalog.forEach((provider) => {
       const catalog = catalogMap[provider.toLowerCase() as Provider];
       if (catalog) {
@@ -125,6 +131,9 @@ export function buildManifest(config?: UserConfig) {
 
   if (config === defaultConfig) {
     defaultManifest = structuredClone(manifest);
+    defaultManifest.config = [
+      { key: "config", type: "text", default: config64 },
+    ];
     return defaultManifest;
   }
   manifest.config = [{ key: "config", type: "text", default: config64 }];

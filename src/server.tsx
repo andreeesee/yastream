@@ -162,7 +162,12 @@ configStremioRoutes.forEach((route) => {
         return await buildCatalogHandler(args, config);
       });
     }
-    if (manifest.resources.includes("meta")) {
+    if (
+      manifest.resources.includes("meta") ||
+      manifest.resources.some(
+        (r) => typeof r === "object" && "name" in r && r.name === "meta",
+      )
+    ) {
       builder.defineMetaHandler(async (args) => {
         return await buildMetaHandler(args, config);
       });

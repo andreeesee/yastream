@@ -307,7 +307,7 @@ class KissKHScraperr extends BaseProvider {
     }
     const season = 1;
     const date = new Date(detail.releaseDate).toISOString();
-    const videos: MetaVideo[] = detail.episodes.map((ep, index) => {
+    const videos: MetaVideo[] = detail.episodes.map((ep) => {
       const episodeNum = ep.number;
       let id = `kisskh:${detail.id}:${season}:${episodeNum}`;
       // In Kisskh sometimes movie also has multiple episodes
@@ -322,7 +322,7 @@ class KissKHScraperr extends BaseProvider {
         season: season,
         episode: episodeNum,
       };
-    }).sort((a, b) => a.episode - b.episode);
+    });
     let metaId = `${Prefix.KISSKH}:${detail.id}`;
     const meta: MetaDetail = {
       id: metaId,
@@ -582,7 +582,7 @@ class KissKHScraperr extends BaseProvider {
   private async _getStream(episodeId: string, token: string) {
     const url = this.getEpisodeUrl().replace("{id}", episodeId) + token;
     this.logger.log(`GET stream | ${url}`);
-    const stream = await axiosGet<StreamResponse>(url, {timeout: 15000});
+    const stream = await axiosGet<StreamResponse>(url, { timeout: 15000 });
     if (!stream) return null;
     this.logger.log(`Stream Url | ${stream.Video}`);
     return stream;
