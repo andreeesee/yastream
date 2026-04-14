@@ -3,6 +3,7 @@
 - Improve UI-UX of configure/landing page
 - Choose custom poster from multiple providers
 - Can set sites to fetch (in case got blocked)
+- Adjust: rate limit to 20 request per minute
 - Fix: episode 0 for some show
 
 # v0.3.1 2026-03-29
