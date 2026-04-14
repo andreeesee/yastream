@@ -70,7 +70,7 @@ if (ENV.ENABLE_ANALYTICS) {
 
 const limiter = rateLimiter({
   windowMs: 1 * 60 * 1000, // 1 minute
-  limit: 100,
+  limit: 20,
   keyGenerator: (c) =>
     c.req.header("x-forwarded-for") ||
     c.req.header("cf-connecting-ip") ||
