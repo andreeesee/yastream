@@ -16,6 +16,7 @@ export interface UserConfig {
   stream: Provider[];
   nsfw: boolean;
   info: boolean;
+  poster: "rpdb" | "erdb" | "xrdb";
 }
 
 export enum Prefix {
@@ -45,6 +46,7 @@ export const defaultConfig: UserConfig = {
   catalogs: defaultCatalogs,
   nsfw: false,
   info: false,
+  poster: "rpdb",
 };
 
 function buildCatalogMap(catalogs: string[] = defaultCatalogs) {
@@ -89,8 +91,7 @@ const baseManifest: Manifest = {
   ],
   types: ["movie", "series"],
   name: pkg.name,
-  description:
-    "Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with languages selection. Powered by TMDB and TVDB for metadata",
+  description: pkg.description,
   behaviorHints: {
     adult: false,
     p2p: false,

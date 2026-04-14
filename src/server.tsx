@@ -77,8 +77,6 @@ const limiter = rateLimiter({
     "anonymous",
 });
 
-// Apply to all stremio routes
-
 // Handle config routes
 app.get("/manifest.json", (c) => {
   const manifest = buildManifest();

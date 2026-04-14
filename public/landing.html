@@ -3,9 +3,24 @@
 
 <head>
     <title>yastream</title>
-    <meta name="description" content="Stream Asian Drama and Movies directly from kisskh. Powered by TMDB for metadata">
+    <meta name="description"
+        content="Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with country selection. Powered by TMDB and TVDB for metadata.">
     </meta>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="og:type" content="website">
+    <meta name="og:title" content="yastream">
+    <meta name="og:description"
+        content="Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with country selection. Powered by TMDB and TVDB for metadata.">
+    </meta>
+    <meta name="og:image"
+        content="https://og.tamthai.de/api/og?title=yastream&description=Stream%20asian%20dramas%2C%20series%2C%20and%20movies.%20Created%20by%20tamthai.de">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="yastream">
+    <meta name="twitter:description"
+        content="Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with country selection. Powered by TMDB and TVDB for metadata.">
+    </meta>
+    <meta name="twitter:image"
+        content="https://og.tamthai.de/api/og?title=yastream&description=Stream%20asian%20dramas%2C%20series%2C%20and%20movies.%20Created%20by%20tamthai.de">
     <link rel="icon" href="/img/yas.png">
     <link rel="stylesheet" href="/style.css">
     <!-- Umami tracking -->
@@ -44,14 +59,14 @@
                 <!-- Catalog -->
                 <h3 class="configure-type">Catalog & Metadata</h3>
                 <div class="config-item">
-                    <label>kisskh | Multiple languages</label>
-                    <input type="checkbox" id="catalog.kisskh" checked />
+                    <label for="catalog.kisskh">kisskh | Multiple languages</label>
+                    <input type="checkbox" class="switch" id="catalog.kisskh" />
                 </div>
                 <!-- Catalog kisskh -->
                 <select id="kisskh-catalog" name="kisskhCatalog[]" multiple placeholder="Select a catalog"
                     autocomplete="off">
                     <option value="kisskh.movie.Korean">Korean movie</option>
-                    <option selected value="kisskh.series.Korean">Korean series</option>
+                    <option value="kisskh.series.Korean">Korean series</option>
                     <option value="kisskh.movie.Chinese">Chinese movie</option>
                     <option value="kisskh.series.Chinese">Chinese series</option>
                     <option value="kisskh.movie.US">US movie</option>
@@ -68,8 +83,8 @@
                     <option value="kisskh.series.Taiwanese">Taiwanese series</option>
                 </select>
                 <div class="config-item">
-                    <label>onetouchtv | Multiple languages</label>
-                    <input type="checkbox" id="catalog.onetouchtv" checked />
+                    <label for="catalog.onetouchtv">onetouchtv | Multiple languages</label>
+                    <input class="switch" type="checkbox" id="catalog.onetouchtv" />
                 </div>
                 <!-- Catalog onetouchtv -->
                 <select id="onetouchtv-catalog" name="onetouchtvCatalog[]" multiple placeholder="Select a catalog"
@@ -77,50 +92,92 @@
                     <!-- <option value="onetouchtv.movie.Popular">Popular movie</option> -->
                     <option value="onetouchtv.series.Popular">Popular series</option>
                     <!-- <option value="onetouchtv.movie.Korean">Korean movie</option> -->
-                    <option selected value="onetouchtv.series.Korean">Korean series</option>
+                    <option value="onetouchtv.series.Korean">Korean series</option>
                     <!-- <option value="onetouchtv.movie.Chinese">Chinese movie</option> -->
                     <option value="onetouchtv.series.Chinese">Chinese series</option>
                     <!-- <option value="onetouchtv.movie.Thai">Thai movie</option> -->
                     <option value="onetouchtv.series.Thai">Thai series</option>
                 </select>
                 <div class="config-item">
-                    <label>idrama | Khmer </label>
-                    <input type="checkbox" id="catalog.idrama" />
+                    <label for="catalog.idrama">idrama | Khmer </label>
+                    <input class="switch" type="checkbox" id="catalog.idrama" />
                 </div>
                 <!-- Stream -->
                 <h3 class="configure-type">Stream and subtitles</h3>
                 <div class="config-item">
-                    <label>kisskh | Multiple languages</label>
-                    <input type="checkbox" id="stream.kisskh" checked />
+                    <label for="stream.kisskh">kisskh | Multiple languages</label>
+                    <input class="switch" type="checkbox" id="stream.kisskh" checked />
                 </div>
                 <div class="config-item">
-                    <label>onetouchtv | Multiple languages</label>
-                    <input type="checkbox" id="stream.onetouchtv" checked />
+                    <label for="stream.onetouchtv">onetouchtv | Multiple languages</label>
+                    <input class="switch" type="checkbox" id="stream.onetouchtv" checked />
                 </div>
                 <div class="config-item">
-                    <label>idrama | Khmer</label>
-                    <input type="checkbox" id="stream.idrama" />
+                    <label for="stream.idrama">idrama | Khmer</label>
+                    <input class="switch" type="checkbox" id="stream.idrama" />
                 </div>
                 <div class="config-item">
-                    <label>kkphim | Vietnamese (some movies have DUB)
-                        <br />sometimes has AD, require Vietnamese VPN/Mediaflow-proxy</label>
-                    <input type="checkbox" id="stream.kkphim" />
+                    <label for="stream.kkphim">kkphim | Vietnamese</label>
+                    <div class="tooltip">
+                        (i)
+                        <div class="tooltip-text">
+                            <p>- Some movies have DUB (thuyết minh)</p>
+                            <p>- Sometimes has AD</p>
+                            <p>- Requires Vietnamese VPN/Mediaflow-proxy</p>
+                        </div>
+                    </div>
+                    <input class="switch" type="checkbox" id="stream.kkphim" />
                 </div>
                 <div class="config-item">
-                    <label>ophim&nbsp; | Vietnamese</label>
-                    <input type="checkbox" id="stream.ophim" />
+                    <label for="stream.ophim">ophim&nbsp; | Vietnamese</label>
+                    <input class="switch" type="checkbox" id="stream.ophim" />
                 </div>
                 <h3 class="configure-type">Filter and display</h3>
                 <div class="config-item">
-                    <label>Show Adult/NSFW</label>
-                    <input type="checkbox" id="nsfw" />
+                    <label for="nsfw">Show Adult/NSFW</label>
+                    <div class="tooltip">
+                        (i)
+                        <div class="tooltip-text">
+                            <p>- NSFW posters will be blured when off</p>
+                            <p>- If you find any wrong or missing poster please let me know at Discord</p>
+                        </div>
+                    </div>
+                    <input class="switch" type="checkbox" id="nsfw" />
                 </div>
                 <div class="config-item">
-                    <label>Show detail stream information
-                        <br />e.g. 1 hours 1 minutes 0.8GB 720p
-                        <br />(slower result when enabled)
+                    <label for="info">Show stream detail</label>
+                    <div class="tooltip">
+                        (i)
+                        <div class="tooltip-text">
+                            <p />- e.g. 1 hours 1 minutes 0.8GB 720p
+                            <p />- Slower result when enabled
+                        </div>
+                    </div>
+                    <input class="switch" type="checkbox" id="info" />
+                </div>
+                <div class="config-item">
+                    <label>Use custom poster with ratings</label>
+                </div>
+                <div class="radio-group">
+                    <label class="radio-card">
+                        <input class="radio" type="radio" name="poster" id="rpdb" value="rpdb" />
+                        <span class="card-content">
+                            Rating Poster
+                            <br>RPDB
+                        </span>
                     </label>
-                    <input type="checkbox" id="info" />
+                    <label class="radio-card">
+                        <input class="radio" type="radio" name="poster" id="erdb" value="erdb" />
+                        <span class="card-content">Easy Ratings
+                            <br>ERDB
+                        </span>
+                    </label>
+                    <label class="radio-card">
+                        <input class="radio" type="radio" name="poster" id="xrdb" value="xrdb" />
+                        <span class="card-content">Extended Rating
+                            <br>XRDB
+                        </span>
+                    </label>
                 </div>
             </form>
         </section>
@@ -129,37 +186,22 @@
         <div id="install">
             <div class="grid-btn">
                 <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
-                    class="btn btn-primary">Install in
-                    App<svg class="icon">
+                    class="btn btn-primary">Install in App
+                    <svg class="icon">
                         <use href="/icons.svg#external"></use>
-                    </svg></a>
+                    </svg>
+                </a>
                 <a data-umami-event="installWeb" id="installWeb" target="_blank" rel="noopener noreferrer"
-                    class="btn btn-secondary">Install for
-                    Web<svg class="icon">
+                    class="btn btn-secondary">Install for Web
+                    <svg class="icon">
                         <use href="/icons.svg#external"></use>
+                    </svg>
                 </a>
             </div>
             <div class="manifest-container">
                 <code class="manifest-url" id="manifestUrl"></code>
                 <button data-umami-event="copyManifestUrl" onclick="copyUrl()" class="copy-btn">Copy</button>
             </div>
-        </div>
-
-        <!-- Support -->
-        <div id="support" class="grid-btn">
-            <a href="https://www.reddit.com/r/StremioAddons/comments/1r36zji/yastream_yet_another_stream_supported_dramas_and/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button"
-                class="btn btn-reddit" target="_blank" rel="noopener noreferrer">
-                Ask me on Reddit
-                <svg class="icon">
-                    <use href="/icons.svg#external"></use>
-                </svg>
-            </a>
-            <a href="https://discord.gg/fnXwYn7wBf" class="btn btn-discord" target="_blank" rel="noopener noreferrer">
-                Join Discord
-                <svg class="icon">
-                    <use href="/icons.svg#external"></use>
-                </svg>
-            </a>
         </div>
 
         <!-- Ko-fi -->
@@ -173,38 +215,41 @@
         <footer style="margin-top: 1rem">
             <!-- Links -->
             <div id="links">
-                <div style="display: flex; justify-content: center; gap: 2rem;">
-                    <div style="display: flex; flex-direction: row;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://stremio-addons.net/addons/yastream">Star this
-                            <svg class="icon">
-                                <use href="/icons.svg#external"></use>
-                            </svg>
-                        </a>
-                    </div>
-                    <div style="display: flex; flex-direction: row;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://github.com/hoangtamthai/yastream">GitHub
-                            <svg class="icon">
-                                <use href="/icons.svg#external"></use>
-                            </svg>
-                        </a>
-                    </div>
+                <div class="link-group">
+                    <a target="_blank" rel="noopener noreferrer" href="https://stremio-addons.net/addons/yastream">
+                        <img src="/img/stremio-addon.ico" class="logo" alt="stremio-addon logo">
+                    </a>
+                    <a target="_blank" rel="noopener noreferrer" href="https://github.com/hoangtamthai/yastream">
+                        <svg class="logo">
+                            <use href="/icons.svg#github"></use>
+                        </svg>
+                    </a>
+                    <a href="https://www.reddit.com/r/StremioAddons/comments/1r36zji/yastream_yet_another_stream_supported_dramas_and/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button"
+                        target="_blank" rel="noopener noreferrer">
+                        <svg class="logo">
+                            <use href="/icons.svg#reddit"></use>
+                        </svg>
+                    </a>
+                    <a href="https://discord.gg/fnXwYn7wBf" target="_blank" rel="noopener noreferrer">
+                        <svg class="logo">
+                            <use href="/icons.svg#discord2"></use>
+                        </svg>
+                    </a>
                     <div style="display: flex;">
                         <a target="_blank" rel="noopener noreferrer"
                             href="https://uptime-fs.tamthai.de/status/yastream">Status
-                            <svg class="icon">
-                                <use href="/icons.svg#external"></use>
-                            </svg>
                         </a>
+                        <svg class="icon">
+                            <use href="/icons.svg#external"></use>
+                        </svg>
                     </div>
                     <div style="display: flex;">
                         <a target="_blank" rel="noopener noreferrer"
                             href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
-                            <svg class="icon">
-                                <use href="/icons.svg#external"></use>
-                            </svg>
                         </a>
+                        <svg class="icon">
+                            <use href="/icons.svg#external"></use>
+                        </svg>
                     </div>
                 </div>
             </div>

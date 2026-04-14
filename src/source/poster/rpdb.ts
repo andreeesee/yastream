@@ -1,7 +1,7 @@
 import { ContentType } from "@stremio-addon/sdk";
-import { Prefix } from "../lib/manifest.js";
-import { axiosHead } from "../utils/axios.js";
-import { ENV } from "../utils/env.js";
+import { Prefix } from "../../lib/manifest.js";
+import { axiosHead } from "../../utils/axios.js";
+import { ENV } from "../../utils/env.js";
 
 const baseUrl = "https://api.ratingposterdb.com";
 export async function getRpdbPoster(

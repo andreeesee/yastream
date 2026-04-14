@@ -126,6 +126,7 @@ export class OnetouchtvScrapper extends BaseProvider {
   baseUrl = Buffer.from("aHR0cHM6Ly9hcGkzLmRldmNvcnAubWU=", "base64").toString(
     "utf-8",
   );
+  private onetouchTmdb = new Map([["172390-climax-2026", "241860"]]);
 
   async searchCatalog(
     args: CatalogHandlerArgs,
@@ -139,7 +140,35 @@ export class OnetouchtvScrapper extends BaseProvider {
       undefined,
       false,
     );
-    const searches: MetaPreview[] = searchResults.result.map((item) => ({
+    const tmdbDetails = await Promise.all(
+      searchResults.result.map((item) => {
+        const { title, year } = extractTitleYear(item.title);
+        return tmdb.searchDetailImdb(title, type, year);
+      }),
+    );
+    const posterResults = await Promise.all(
+      searchResults.result.map(async (item, index) => {
+        const tmdbDetail = tmdbDetails[index];
+        let poster = item.image;
+        // Use TMDB/RPDB if available
+        if (tmdbDetail) {
+          const sameTitleId = this.onetouchTmdb.get(item.id);
+          if (sameTitleId) {
+            tmdbDetail.id = sameTitleId;
+          }
+          const posterParam: PosterParam = {
+            prefix: Prefix.TMDB,
+            id: tmdbDetail.id,
+            type,
+            fallbackUrl: tmdbDetail.thumbnail || poster,
+          };
+          poster = await getPosterUrl(posterParam, config);
+        }
+        item.image = poster;
+        return item;
+      }),
+    );
+    const searches: MetaPreview[] = posterResults.map((item) => ({
       id: `${Prefix.ONETOUCHTV}:${item.id}`,
       name: item.title,
       poster: item.image,
@@ -182,7 +211,35 @@ export class OnetouchtvScrapper extends BaseProvider {
           (item) => item.country === catalogType,
         );
       }
-      return filteredData.map((item: any) => {
+      const tmdbDetails = await Promise.all(
+        filteredData.map((item) => {
+          const { title, year } = extractTitleYear(item.title);
+          return tmdb.searchDetailImdb(title, type, year);
+        }),
+      );
+      filteredData = await Promise.all(
+        filteredData.map(async (item, index) => {
+          const tmdbDetail = tmdbDetails[index];
+          let poster = item.image;
+          // Use TMDB/RPDB if available
+          if (tmdbDetail) {
+            const sameTitleId = this.onetouchTmdb.get(item.id);
+            if (sameTitleId) {
+              tmdbDetail.id = sameTitleId;
+            }
+            const posterParam: PosterParam = {
+              prefix: Prefix.TMDB,
+              id: tmdbDetail.id,
+              type,
+              fallbackUrl: tmdbDetail.thumbnail || poster,
+            };
+            poster = await getPosterUrl(posterParam, config);
+          }
+          item.image = poster;
+          return item;
+        }),
+      );
+      return filteredData.map((item) => {
         const onetouchtvId = `${Prefix.ONETOUCHTV}:${item.id}`;
         const metaDetail: MetaDetail = {
           id: onetouchtvId,
@@ -378,9 +435,12 @@ export class OnetouchtvScrapper extends BaseProvider {
 // Decryption
 import crypto from "crypto";
 import { cache } from "../utils/cache.js";
-import { matchTitle } from "../utils/fuse.js";
+import { extractTitleYear, matchTitle } from "../utils/fuse.js";
 import { parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
+import { tmdb } from "./tmdb.js";
+import { getRpdbPoster } from "./poster/rpdb.js";
+import { getPosterUrl, PosterParam } from "./poster/poster.js";
 const KEY_HEX = Buffer.from(
   "Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ2ZjY2NjQ0OTZlNjk3NDU2NjU2Mzc0NmY3MjUzNzQ2ZA==",
   "base64",

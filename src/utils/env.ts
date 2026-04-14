@@ -11,6 +11,7 @@ const envSchema = z.object({
 
   // Optional key
   RPDB_API_KEY: z.string().default("t0-free-rpdb"),
+  TMDB_KEY: z.string().default(""),
   DEBUG_KEY: z.string().default("debug-key"),
 
   // Logging: Uses an enum to restrict values
@@ -33,6 +34,13 @@ const envSchema = z.object({
 
   // Cache warming
   WARM_CACHE: z.coerce.boolean().default(true),
+
+  // Kisskh domains
+  KISSKH_URLS: z
+    .string()
+    .transform((str) => JSON.parse(str))
+    .pipe(z.array(z.url()))
+    .default(["https://kisskh.co", "https://kisskh.do"]),
 });
 
 // Validate process.env

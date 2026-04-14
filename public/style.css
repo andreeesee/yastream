@@ -7,6 +7,7 @@
   --secondary-background: #2a2a2a;
   --foreground: #fff1e3;
   --secondary-foreground: #fff1e390;
+  --on-foreground: #fff1e3dd;
   --rounded-md: 10px;
   --margin-md: 1rem;
   --xxxs: 0.1rem;
@@ -14,11 +15,23 @@
   --xs: 0.5rem;
   --sm: 0.8rem;
   --md: 1rem;
+  --lg: 1.5rem;
+  --xl: 3rem;
   --font-md: 0.9rem;
+
+  --toggle-width: 44px;
+  --toggle-height: 24px;
+  --toggle-circle: 18px;
+  --accent-color: #007aff; /* iOS Blue */
+  --btn-bg: #444;
 }
 
 body {
-  font-family: sans-serif;
+  font-family:
+    "Genty Sans",
+    -apple-system,
+    "Roboto",
+    sans-serif;
   background: var(--background);
   display: flex;
   justify-content: center;
@@ -26,8 +39,57 @@ body {
 
 .icon {
   margin-left: 0.3rem;
+  margin-bottom: auto;
   width: 1rem;
   height: 1.1rem;
+}
+.logo {
+  width: var(--lg);
+  height: var(--lg);
+  border-radius: 100%;
+  transition: all 0.3s ease;
+}
+.btn {
+  text-decoration: none;
+  border: none;
+  border-radius: var(--rounded-md);
+  padding: 12px 24px;
+  flex: 1;
+  margin-top: var(--margin-md);
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.logo:hover,
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px var(--secondary-background);
+}
+.btn-reddit {
+  background: #ff4500;
+}
+.btn-reddit:hover {
+  background: #cf3700;
+}
+.btn-discord {
+  background: #5865f2;
+}
+.btn-discord:hover {
+  background: #424bb4;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.btn-secondary {
+  background: #6c757d;
+}
+.btn-secondary:hover {
+  background: #5a6268;
 }
 
 .container {
@@ -69,6 +131,9 @@ p {
   font-size: 0.9em;
   margin-top: 0.5rem;
 }
+p:first-child {
+  margin-top: 0;
+}
 
 /* Configure */
 .configure {
@@ -90,15 +155,53 @@ p {
   display: flex;
   text-align: left;
   justify-content: space-between;
-  align-items: left;
   padding-top: var(--md);
 }
 .config-item label {
+  cursor: pointer;
   margin-left: var(--xs);
 }
-.config-item input {
-  margin-left: var(--md);
+
+input[type="checkbox"].switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--btn-bg);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.3s;
+  /* prevents the flexbox from squishing the toggle */
+  flex-shrink: 0;
+  margin-left: 20px;
 }
+/* The Sliding Circle */
+input[type="checkbox"].switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--foreground);
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Checked States */
+input[type="checkbox"].switch:checked {
+  background: var(--accent-color);
+}
+input[type="checkbox"].switch:checked::after {
+  transform: translateX(20px);
+}
+/* Accessibility: Keyboard Focus */
+input[type="checkbox"].switch:focus-visible {
+  border: 2px solid #fff;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* Tom Select */
 .ts-wrapper {
   margin-top: var(--xs);
@@ -144,52 +247,77 @@ p {
   margin: 0 var(--xxs);
 }
 
+/* Tooltip */
+.tooltip-text {
+  /* visibility: hidden; */
+  display: none;
+  background-color: var(--background);
+  color: var(--foreground);
+  max-width: 400px;
+  min-width: 200px;
+  border: 1px solid var(--secondary-foreground);
+  text-align: left;
+  border-radius: var(--rounded-md);
+  padding: var(--xs) var(--md);
+  position: absolute;
+  bottom: 4vh;
+  left: -13vw;
+  z-index: 1;
+}
+.tooltip {
+  position: relative;
+  text-decoration: dotted underline;
+  margin-right: auto;
+  margin-left: var(--xs);
+}
+
+.tooltip:hover .tooltip-text {
+  display: inline;
+}
+
+/* Radio */
+.radio-group {
+  margin-top: var(--margin-md);
+  display: flex;
+  gap: var(--md);
+}
+.radio-card {
+  cursor: pointer;
+  flex: 1;
+}
+/* Hide the actual radio button */
+.radio-card input {
+  display: none;
+}
+.radio-card span {
+  font-size: var(--sm);
+}
+/* The "Card" UI */
+.card-content {
+  display: block;
+  padding: var(--md) var(--md);
+  border: 2px solid var(--secondary-foreground);
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+/* The Selected State */
+.radio-card input:checked + .card-content {
+  border-color: var(--accent-color);
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--accent-color);
+}
+/* Hover Effect */
+.radio-card:hover .card-content {
+  background: var(--btn-bg);
+}
+
 /* Install */
 .grid-btn {
   display: flex;
   justify-content: space-between;
   gap: 1.2rem;
-}
-.btn {
-  text-decoration: none;
-  border: none;
-  border-radius: var(--rounded-md);
-  padding: 12px 24px;
-  flex: 1;
-  margin-top: var(--margin-md);
-  font-size: 1em;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px var(--secondary-background);
-}
-.btn-reddit {
-  background: #ff4500;
-}
-.btn-reddit:hover {
-  background: #cf3700;
-}
-.btn-discord {
-  background: #5865f2;
-}
-.btn-discord:hover {
-  background: #424bb4;
-}
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-.btn-secondary {
-  background: #6c757d;
-}
-.btn-secondary:hover {
-  background: #5a6268;
 }
 
 /* Manifest Url */
@@ -289,4 +417,10 @@ p {
 
 .close-modal:hover {
   color: var(--foreground);
+}
+
+.link-group {
+  display: flex;
+  justify-content: center;
+  gap: var(--lg);
 }

@@ -1,7 +1,7 @@
 {
   "name": "yastream",
   "version": "0.3.1",
-  "description": "Stream asian movies, series and dramas with kisskh",
+  "description": "Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with country selection. Powered by TMDB and TVDB for metadata",
   "scripts": {
     "start": "node --env-file=.env dist/server.js",
     "build": "tsc",

@@ -102,6 +102,23 @@ function updateCatalogs() {
   });
 }
 
+const defaultCatalogs = [
+  "kisskh.series.Korean",
+  "kisskh.series.Search",
+  "kisskh.movie.Search",
+  "onetouchtv.series.Korean",
+  "onetouchtv.series.Search",
+  "idrama.series.Search",
+  "idrama.series.iDrama",
+];
+const defaultConfig = {
+  catalog: ["kisskh", "onetouchtv"],
+  stream: ["kisskh", "onetouchtv"],
+  catalogs: defaultCatalogs,
+  nsfw: false,
+  info: false,
+  poster: "rpdb",
+};
 // Configure
 document
   .getElementById("configureForm")
@@ -125,18 +142,19 @@ function updateManifestUrl() {
   });
   config.catalogs = Array.from(selectedCatalogs);
   console.log("Selected catalogs:", config.catalogs);
-  const defaultCatalogs = [
-    "kisskh.series.Search",
-    "kisskh.movie.Search",
-    "onetouchtv.series.Search",
-    "idrama.series.Search",
-    "idrama.series.iDrama",
-  ];
   config.catalogs = [...config.catalogs, ...defaultCatalogs];
   console.log("Final catalogs list:", config.catalogs);
   const checkedBoxes = document.querySelectorAll(
     '#configureForm input[type="checkbox"]',
   );
+  const radios = document.querySelectorAll(
+    '#configureForm input[type="radio"]',
+  );
+  radios.forEach((radio) => {
+    if (radio.name == "poster" && radio.checked == true) {
+      config[radio.name] = radio.id;
+    }
+  });
   checkedBoxes.forEach((box) => {
     if (!box.id.includes(".")) {
       // for nsfw, info
@@ -163,17 +181,26 @@ document.addEventListener("DOMContentLoaded", () => {
   setInstallUrl(window.location.origin + "/manifest.json");
   const path = window.location.pathname;
   const match = path.match(/\/(.+)\/configure/);
-  if (match && match[1]) {
-    try {
-      const config = JSON.parse(atob(match[1]));
-      console.log(JSON.stringify(config));
-
-      Object.keys(config).forEach((key) => {
-        const values = config[key];
-        if (key === "nsfw" || key === "info") {
+  const hasConfig = match && match[1];
+  const config = hasConfig ? JSON.parse(atob(match[1])) : defaultConfig;
+  try {
+    Object.keys(config).forEach((key) => {
+      const values = config[key];
+      switch (key) {
+        // radio type
+        case "poster":
+          const poster = config[key];
+          const posterRadio = document.getElementById(poster);
+          posterRadio.checked = true;
+          break;
+        // checked type
+        case "nsfw":
+        case "info":
           const input = document.getElementById(key);
           input.checked = config[key];
-        } else if (key === "catalogs") {
+          break;
+        // multi select
+        case "catalogs":
           catalogs.forEach((catalog) => {
             const tomSelect = getTomSelect(catalog);
             const catalogValues = values.filter((value) =>
@@ -181,24 +208,29 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             tomSelect.setValue(catalogValues);
           });
-        } else if (key === "catalog" || key === "stream") {
+          break;
+        // multi check
+        case "catalog":
+        case "stream":
           values.forEach((value) => {
             // Reconstruct the ID (e.g., "catalog.idrama")
             const inputId = `${key}.${value}`;
             const input = document.getElementById(inputId);
             if (input) {
               input.checked = true;
+            } else {
+              input.checked = false;
             }
           });
-        }
-      });
+          break;
+        default:
+          break;
+      }
+    });
 
-      // After applying saved config, update the install links
-      updateManifestUrl();
-    } catch (error) {
-      console.error("Failed to decode configuration:", error);
-    }
-  } else {
+    // After applying saved config, update the install links
     updateManifestUrl();
+  } catch (error) {
+    console.error("Failed to decode configuration:", error);
   }
 });

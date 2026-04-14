@@ -1,3 +1,10 @@
+# v0.4.0 2026-04-14
+
+- Improve UI-UX of configure/landing page
+- Choose custom poster from multiple providers
+- Can set sites to fetch (in case got blocked)
+- Fix: episode 0 for some show
+
 # v0.3.1 2026-03-29
 
 - Improve caching and error handling
@@ -7,7 +14,7 @@
 - Rotate different sites for availability
 - Show episode 0 if have
 - Add warm cache for popular catalogs
-- Fix client cache for all resource route
+- Fix: client cache for all resource route
 
 # v0.3.0 2026-03-07
 

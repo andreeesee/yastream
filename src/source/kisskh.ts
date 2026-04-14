@@ -17,8 +17,8 @@ import { parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getSetDecryptedSubtitle } from "../utils/subtitle.js";
 import { ContentDetail } from "./meta.js";
+import { getPosterUrl, PosterParam } from "./poster/poster.js";
 import { BaseProvider } from "./provider.js";
-import { getRpdbPoster } from "./rpdb.js";
 import { tmdb } from "./tmdb.js";
 
 export interface SearchResult {
@@ -75,12 +75,7 @@ const KISSKH_COUNTRY: Record<string, string> = {
 };
 
 class KissKHScraperr extends BaseProvider {
-  readonly urls = [
-    "https://kisskh.co",
-    "https://kisskh.do",
-    // "https://kisskh.id",
-    // "https://kisskh.ovh",
-  ];
+  readonly urls = ENV.KISSKH_URLS;
   readonly baseUrl: string = "https://kisskh.co";
   getBaseUrl() {
     const randomIndex = Math.floor(Math.random() * this.urls.length);
@@ -125,7 +120,11 @@ class KissKHScraperr extends BaseProvider {
     12106, 11915, 11834, 11782, 11544, 11519, 11518, 11517, 11511, 11509, 11436,
     10942, 10761,
   ]);
-  private kisskhTmdb = new Map([[12422, "307602"]]);
+  private kisskhTmdb = new Map([
+    [12422, "307602"],
+    [7102, "219882"],
+    [12479, "241860"],
+  ]);
 
   async searchCatalog(
     args: CatalogHandlerArgs,
@@ -158,18 +157,19 @@ class KissKHScraperr extends BaseProvider {
         const tmdbDetail = tmdbDetails[index];
         let poster = kissItem.thumbnail;
 
-        // Use TMDB/RPDB if available
+        // Use custom Poster if available
         if (tmdbDetail) {
           const sameTitleId = this.kisskhTmdb.get(kissItem.id);
           if (sameTitleId) {
             tmdbDetail.id = sameTitleId;
           }
-          poster = await getRpdbPoster(
-            Prefix.TMDB,
-            tmdbDetail.id,
+          const posterParam: PosterParam = {
+            prefix: Prefix.TMDB,
+            id: tmdbDetail.id,
             type,
-            tmdbDetail.thumbnail || kissItem.thumbnail,
-          );
+            fallbackUrl: tmdbDetail.thumbnail || kissItem.thumbnail,
+          };
+          poster = await getPosterUrl(posterParam, config);
         }
 
         // Filter nsfw
@@ -258,12 +258,13 @@ class KissKHScraperr extends BaseProvider {
           if (sameTitleId) {
             tmdbDetail.id = sameTitleId;
           }
-          poster = await getRpdbPoster(
-            Prefix.TMDB,
-            tmdbDetail.id,
+          const posterParam: PosterParam = {
+            prefix: Prefix.TMDB,
+            id: tmdbDetail.id,
             type,
-            tmdbDetail.thumbnail || kissItem.thumbnail,
-          );
+            fallbackUrl: tmdbDetail.thumbnail || poster,
+          };
+          poster = await getPosterUrl(posterParam, config);
         }
 
         // NSFW Override
@@ -403,11 +404,7 @@ class KissKHScraperr extends BaseProvider {
       content.altTitle,
     );
     if (!search[0]) return [];
-    const episodeId = await this._getEpisode(
-      search[0]?.id,
-      content.type,
-      content.episode,
-    );
+    const episodeId = await this._getEpisode(search[0]?.id, content.episode);
     const subtitles = this._getSubtitles(episodeId);
     return subtitles;
   }
@@ -443,7 +440,7 @@ class KissKHScraperr extends BaseProvider {
     config: UserConfig,
   ): Promise<Stream[]> {
     const { episode, id, season, year, type } = content;
-    const episodeId = await this._getEpisode(kisskhId, type, episode);
+    const episodeId = await this._getEpisode(kisskhId, episode);
     const token = await this._getToken(episodeId, this.viGuid);
     const stream = await this._getStream(episodeId, token);
     if (!stream) return [];
@@ -545,21 +542,7 @@ class KissKHScraperr extends BaseProvider {
     else throw new Error(`Not found detail from id | ${kisskhId}`);
   }
 
-  private async _getEpisode(
-    seriesId: number,
-    type: ContentType,
-    episode: number = 1,
-  ) {
-    switch (type) {
-      case "series":
-        if (!episode) {
-          this.logger.error("Episode number required for series");
-          throw new Error(`Episode number required for series`);
-        }
-        break;
-      default:
-        break;
-    }
+  private async _getEpisode(seriesId: number, episode: number = 1) {
     const detail = await this.getDetail(seriesId.toString());
     const episodeCount = detail.episodesCount;
     if (!detail || episodeCount === undefined) {
@@ -573,7 +556,9 @@ class KissKHScraperr extends BaseProvider {
 
     const episodeId = episodeData?.id;
     if (!episodeId) {
-      throw new Error("Episode ID not found");
+      throw new Error(
+        `Episode ID not found ${this.name}:${seriesId}:${episode}`,
+      );
     }
     this.logger.debug(`EpisodeId | ${episodeId}`);
     return episodeId.toString();
