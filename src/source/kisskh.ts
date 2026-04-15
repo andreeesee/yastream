@@ -372,7 +372,7 @@ class KissKHScraperr extends BaseProvider {
           content,
           config,
         );
-        if (streams) cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+        if (streams) cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
         return streams;
       } else {
         const streams = await this.generateStreamsAndSubtitles(
@@ -382,7 +382,7 @@ class KissKHScraperr extends BaseProvider {
           config,
         );
         if (streams.length > 0)
-          cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+          cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
         return streams;
       }
     } catch (error: any) {

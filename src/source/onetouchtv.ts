@@ -354,7 +354,7 @@ export class OnetouchtvScrapper extends BaseProvider {
           return stream;
         }),
       );
-      if (streams.length > 0) cache.set(streamKey, streams, 4 * 60 * 60 * 1000);
+      if (streams.length > 0) cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
       return streams;
     } catch (error) {
       this.logger.error(`Fail to get streams ${content.title} | ${error}`);

@@ -334,7 +334,7 @@ export async function buildStreamHandler(
     const streamResults: { streams: Stream[] } & Cache = { streams: streams };
     if (streams.length > 0) {
       streamResults.cacheMaxAge = 1 * 60 * 60;
-      cache.set(streamKey, streamResults);
+      cache.set(streamKey, streamResults, 1 * 60 * 60 * 1000);
     }
     return streamResults;
   } catch (error) {
