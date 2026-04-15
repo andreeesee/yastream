@@ -1,3 +1,7 @@
+# v0.4.1 2026-04-15
+
+- Stream cache to 1 hour from 2 hours
+
 # v0.4.0 2026-04-14
 
 - Improve UI-UX of configure/landing page
