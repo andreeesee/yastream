@@ -1,3 +1,9 @@
+# v0.4.2 2026-04-19
+
+- Add cicd workflows
+- Show current online users at configure page
+- Fix: remove duplicate catalogs
+
 # v0.4.1 2026-04-15
 
 - Stream cache to 1 hour from 2 hours

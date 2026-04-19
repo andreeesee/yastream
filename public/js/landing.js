@@ -102,15 +102,19 @@ function updateCatalogs() {
   });
 }
 
-const defaultCatalogs = [
-  "kisskh.series.Korean",
+const hiddenCatalogs = [
   "kisskh.series.Search",
   "kisskh.movie.Search",
-  "onetouchtv.series.Korean",
   "onetouchtv.series.Search",
-  "idrama.series.Search",
   "idrama.series.iDrama",
+  "idrama.series.Search",
 ];
+const defaultCatalogs = [
+  "kisskh.series.Korean",
+  "onetouchtv.series.Korean",
+  ...hiddenCatalogs,
+];
+
 const defaultConfig = {
   catalog: ["kisskh", "onetouchtv"],
   stream: ["kisskh", "onetouchtv"],
@@ -142,7 +146,12 @@ function updateManifestUrl() {
   });
   config.catalogs = Array.from(selectedCatalogs);
   console.log("Selected catalogs:", config.catalogs);
-  config.catalogs = [...config.catalogs, ...defaultCatalogs];
+  // Merge hidden search catalogs
+  if (selectedCatalogs.length > 0) {
+    config.catalogs = Array.from(
+      new Set([...config.catalogs, ...hiddenCatalogs]),
+    );
+  }
   console.log("Final catalogs list:", config.catalogs);
   const checkedBoxes = document.querySelectorAll(
     '#configureForm input[type="checkbox"]',
@@ -168,7 +177,7 @@ function updateManifestUrl() {
     }
   });
 
-  console.log("[config]", config);
+  console.log("config:", config);
   const configJson = JSON.stringify(config);
   const configBase64 = btoa(configJson);
   const manifestUrl =

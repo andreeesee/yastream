@@ -186,13 +186,13 @@
         <div id="install">
             <div class="grid-btn">
                 <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
-                    class="btn btn-primary">Install in App
+                    class="btn btn-primary">Install App
                     <svg class="icon">
                         <use href="/icons.svg#external"></use>
                     </svg>
                 </a>
                 <a data-umami-event="installWeb" id="installWeb" target="_blank" rel="noopener noreferrer"
-                    class="btn btn-secondary">Install for Web
+                    class="btn btn-secondary">Install Web
                     <svg class="icon">
                         <use href="/icons.svg#external"></use>
                     </svg>
@@ -235,22 +235,13 @@
                             <use href="/icons.svg#discord2"></use>
                         </svg>
                     </a>
-                    <div style="display: flex;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://uptime-fs.tamthai.de/status/yastream">Status
-                        </a>
-                        <svg class="icon">
-                            <use href="/icons.svg#external"></use>
-                        </svg>
-                    </div>
-                    <div style="display: flex;">
-                        <a target="_blank" rel="noopener noreferrer"
-                            href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">Analytics
-                        </a>
-                        <svg class="icon">
-                            <use href="/icons.svg#external"></use>
-                        </svg>
-                    </div>
+                    <a target="_blank" rel="noopener noreferrer"
+                        href="https://uptime-fs.tamthai.de/status/yastream">Status
+                    </a>
+                    <a target="_blank" rel="noopener noreferrer"
+                        href="https://umami-fs.tamthai.de/share/DNYrFJkPhnGRFHB3">
+                        <span class="online-dot"></span><span id="active">Online</span>
+                    </a>
                 </div>
             </div>
             <!-- Year. Name -->
@@ -273,6 +264,7 @@
     </div>
 
     <script src="/js/landing.js"></script>
+    <script src="/js/online.js"></script>
 </body>
 
 </html>

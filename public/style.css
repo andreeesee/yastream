@@ -39,6 +39,7 @@ body {
 
 .icon {
   margin-left: 0.3rem;
+  margin-top: auto;
   margin-bottom: auto;
   width: 1rem;
   height: 1.1rem;
@@ -423,4 +424,28 @@ input[type="checkbox"].switch:focus-visible {
   display: flex;
   justify-content: center;
   gap: var(--lg);
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.online-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--xxs);
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
 }
