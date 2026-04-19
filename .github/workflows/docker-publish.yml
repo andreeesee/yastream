@@ -26,22 +26,50 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      - name: Get version from package.json
+        id: get-version
+        run: |
+          VERSION=$(jq -r .version package.json)
+          echo "VERSION=$VERSION" >> "${GITHUB_ENV}"
+
+      - name: Extract metadata for main
+        if: github.ref == 'refs/heads/main'
+        id: meta-main
         uses: docker/metadata-action@v5
         with:
           images: tamthai/yastream
           tags: |
-            type=semver,pattern={{ version }}
-            type=ref,value=latest,branch=main
-            type=ref,value=dev,branch=dev
+            type=raw,value=latest
+            type=raw,value=${{ env.VERSION }}
 
-      - name: Build and push
+      - name: Extract metadata for dev
+        if: github.ref == 'refs/heads/dev'
+        id: meta-dev
+        uses: docker/metadata-action@v5
+        with:
+          images: tamthai/yastream
+          tags: |
+            type=raw,value=dev
+            type=raw,value=${{ env.VERSION }}
+
+      - name: Build and push main
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          tags: ${{ steps.meta-main.outputs.tags }}
+          labels: ${{ steps.meta-main.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push dev
+        if: github.ref == 'refs/heads/dev'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta-dev.outputs.tags }}
+          labels: ${{ steps.meta-dev.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
