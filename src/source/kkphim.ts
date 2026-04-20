@@ -136,7 +136,8 @@ export class KkphimScraper extends BaseProvider {
           behaviorHints: {
             countryWhitelist: [iso639FromCountryCode(CountryCode.vi)],
             notWebReady: true,
-            bingeGroup: `yastream-kkphim-${index === 0 ? "subtitle" : "voiceover"}`,
+            bingeGroup: `${this.displayName}-${index === 0 ? "subtitle" : "voiceover"}`,
+            filename: `${formatTitle}-${this.name}`,
           },
         };
         return stream;

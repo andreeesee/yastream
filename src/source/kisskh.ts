@@ -469,7 +469,8 @@ class KissKHScraperr extends BaseProvider {
         title: formatTitle,
         behaviorHints: {
           notWebReady: true,
-          bingeGroup: "yastream-kisskh",
+          bingeGroup: `${this.displayName}`,
+          filename: `${formatTitle}-${this.name}`,
         },
       },
     ];
@@ -587,6 +588,7 @@ class KissKHScraperr extends BaseProvider {
         id: `${this.name}-${index.toString()}`,
         lang: lang,
         url: src,
+        label: `${this.name}`,
       };
       if (this._needsDecryption(src)) {
         // set to global cache

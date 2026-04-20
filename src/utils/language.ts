@@ -40,10 +40,12 @@ export enum CountryCode {
   sl = "sl",
   sr = "sr",
   ta = "ta",
+  tl = "tl",
   te = "te",
   th = "th",
   tr = "tr",
   uk = "uk",
+  ur = "ur",
   vi = "vi",
   zh = "zh",
 }
@@ -52,7 +54,7 @@ const countryCodeMap: Record<
   CountryCode,
   { language: string; flag: string; iso639: string | undefined }
 > = {
-  multi: { language: "Multi", flag: "🌐", iso639: undefined },
+  multi: { language: "Multi", flag: "🌐", iso639: "mul" },
   al: { language: "Albanian", flag: "🇦🇱", iso639: "sqi" },
   ar: { language: "Arabic", flag: "🇸🇦", iso639: "ara" },
   bg: { language: "Bulgarian", flag: "🇧🇬", iso639: "bul" },
@@ -93,10 +95,12 @@ const countryCodeMap: Record<
   sl: { language: "Slovenian", flag: "🇸🇮", iso639: "slv" },
   sr: { language: "Serbian", flag: "🇷🇸", iso639: "srp" },
   ta: { language: "Tamil", flag: "🇮🇳", iso639: "tam" }, // Fixed iso
+  tl: { language: "Tagalog", flag: "🇵🇭", iso639: "tgl" }, // Fixed iso
   te: { language: "Telugu", flag: "🇮🇳", iso639: "tel" },
   th: { language: "Thai", flag: "🇹🇭", iso639: "tha" },
   tr: { language: "Turkish", flag: "🇹🇷", iso639: "tur" },
   uk: { language: "Ukrainian", flag: "🇺🇦", iso639: "ukr" },
+  ur: { language: "Urdu", flag: "🇵🇰", iso639: "urd" },
   vi: { language: "Vietnamese", flag: "🇻🇳", iso639: "vie" },
   zh: { language: "Chinese", flag: "🇨🇳", iso639: "zho" },
 };

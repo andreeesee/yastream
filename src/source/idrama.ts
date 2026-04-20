@@ -188,7 +188,8 @@ export class IDramaScraper extends BaseProvider {
           title: `${formatTitle}`,
           behaviorHints: {
             notWebReady: true,
-            bingeGroup: `yastream-kisskh`,
+            bingeGroup: this.displayName,
+            filename: `${formatTitle}-${this.name}`,
           },
         },
       ];

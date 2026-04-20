@@ -100,17 +100,19 @@ const ONETOUCHTV_LANGUAGE: Record<string, CountryCode> = {
   Français: CountryCode.fr,
   Indonesia: CountryCode.id,
   Italian: CountryCode.it,
-  اُردُو: CountryCode.multi,
+  اُردُو: CountryCode.ur,
   日本語: CountryCode.ja,
   한국어: CountryCode.ko,
   Português: CountryCode.pt,
   ខ្មែរ: CountryCode.km,
+  "По-русски": CountryCode.ru,
+  Melayu: CountryCode.ms,
   ภาษาไทย: CountryCode.th,
   Русский: CountryCode.ru,
   မြန်မာ: CountryCode.ms,
   Burmese: CountryCode.ms,
   Myanmar: CountryCode.ms,
-  Filipino: CountryCode.multi,
+  Filipino: CountryCode.tl,
   বাংলা: CountryCode.bn,
   ਪੰਜਾਬੀ: CountryCode.pa,
 };
@@ -348,7 +350,8 @@ export class OnetouchtvScrapper extends BaseProvider {
             title: formatTitle,
             behaviorHints: {
               notWebReady: true,
-              bingeGroup: `${this.displayName}-${this.name}-${index}`,
+              bingeGroup: `${this.displayName}-${index}`,
+              filename: `${formatTitle}-${this.name}`,
             },
           };
           return stream;
@@ -381,14 +384,15 @@ export class OnetouchtvScrapper extends BaseProvider {
       epId,
       content.episode?.toString() || "1",
     );
-    const subtitles = episodeDetail.result.track.map((source) => {
+    const subtitles = episodeDetail.result.track.map((source, index) => {
+      const countryCode: CountryCode =
+        ONETOUCHTV_LANGUAGE[source.name] || CountryCode.multi;
+      const iso = iso639FromCountryCode(countryCode);
       const subtitle: Subtitle = {
-        id: source.file,
+        id: `${this.name}-${iso}-${index}`,
         url: source.file,
-        lang:
-          iso639FromCountryCode(
-            ONETOUCHTV_LANGUAGE[source.name] || CountryCode.multi,
-          ) || "Unknown",
+        lang: iso,
+        label: `${this.name}`,
       };
       return subtitle;
     });
@@ -423,9 +427,9 @@ export class OnetouchtvScrapper extends BaseProvider {
   }
 
   async getEpisode(id: string, episode: string): Promise<OnetouchtvEpisode> {
-    const encryptedDetail = await axiosGet<string>(
-      `${this.baseUrl}/vod/${id}/episode/${episode}`,
-    );
+    const url = `${this.baseUrl}/vod/${id}/episode/${episode}`;
+    this.logger.log(`GET episode detail | ${url}`);
+    const encryptedDetail = await axiosGet<string>(url);
     if (!encryptedDetail) throw new Error("Failed to get episode detail");
     const detailData: OnetouchtvEpisode = decryptString(encryptedDetail);
     return detailData;
@@ -438,9 +442,8 @@ import { cache } from "../utils/cache.js";
 import { extractTitleYear, matchTitle } from "../utils/fuse.js";
 import { parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
-import { tmdb } from "./tmdb.js";
-import { getRpdbPoster } from "./poster/rpdb.js";
 import { getPosterUrl, PosterParam } from "./poster/poster.js";
+import { tmdb } from "./tmdb.js";
 const KEY_HEX = Buffer.from(
   "Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ2ZjY2NjQ0OTZlNjk3NDU2NjU2Mzc0NmY3MjUzNzQ2ZA==",
   "base64",

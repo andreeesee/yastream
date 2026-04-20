@@ -1,8 +1,17 @@
-# v0.4.2 2026-04-19
+# v0.5.0 2026-04-19
 
+- Add logo to README.md
+- Add label to subtitle to known which provider it from
+- Support aiostream format for title
+- Add retry logic if got rate limit (too many request)
+  1. Up to MAX_RETRIES
+  2. Delay after RETRY_DELAY_MS with exponential backup
+  3. Add RETRY_JITTER_MS for offset retry
+- Each provider has different rate limit client
 - Add cicd workflows
 - Show current online users at configure page
 - Fix: remove duplicate catalogs
+- Fix: show all language subtitle for onetouch
 
 # v0.4.1 2026-04-15
 

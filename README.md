@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="yastream logo" width=256 height=256 src="https://raw.githubusercontent.com/hoangtamthai/yastream/refs/heads/main/public/img/yas.png"></img>
+</p>
+
 # yastream
 
 Yet Another Stream.

@@ -112,7 +112,8 @@ export class OphimScraper extends BaseProvider {
           url: url,
           behaviorHints: {
             notWebReady: true,
-            bingeGroup: `yastream-ophim`,
+            bingeGroup: this.displayName,
+            filename: `${formatTitle}-${this.name}`,
           },
         },
       ];
