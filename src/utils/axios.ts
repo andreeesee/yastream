@@ -17,7 +17,7 @@ function createClient(
     keepAlive: true,
     maxSockets: 20,
     maxFreeSockets: 10,
-    timeout: 8000,
+    timeout: 10000,
     scheduling: "fifo",
   });
   const instance = axios.create({ httpsAgent, headers });
@@ -27,7 +27,11 @@ function createClient(
 }
 
 const defaultClient = createClient(40);
-const kisskhClient = createClient(10, "2s");
+const kisskhClient = createClient(10, "2s", {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+  Accept: "application/json",
+});
 const onetouchtvHost = Buffer.from("YXBpMy5kZXZjb3JwLm1l=", "base64").toString(
   "utf-8",
 );
@@ -59,19 +63,26 @@ export async function axiosGet<T>(
   const cacheData = cache.get(urlKey);
   if (cacheData) return cacheData;
   let lastError: AxiosError | unknown;
+  const http = getClient(url);
   for (let attempt = 1; attempt <= ENV.RETRY_ATTEMPTS; attempt++) {
     try {
-      const http = getClient(url);
-      const data = (await http.get(url, { ...config })).data;
+      const data = (await http.get(url, { timeout: 5000, ...config })).data;
       cache.set(urlKey, data, cacheMs);
       return data as T;
     } catch (error: AxiosError | unknown) {
       lastError = error;
-      const isRateLimit =
-        error instanceof AxiosError &&
-        error.response?.status === HttpStatusCode.TooManyRequests;
+      const status = error instanceof AxiosError && error.response?.status;
+      let isRateLimit = status === HttpStatusCode.TooManyRequests;
+      // Onetouchtv returns 404 when rate limited;
+      if (http === onetouchtvClient) {
+        logger.log(
+          `Status code ${status} from onetouchtv, treat as rate limit`,
+        );
+        isRateLimit = isRateLimit || status === HttpStatusCode.NotFound;
+        logger.log(`Is rate limit: ${isRateLimit} | ${url}`);
+      }
       if (isRateLimit && attempt < ENV.RETRY_ATTEMPTS) {
-        logger.log(`Rate limited ${attempt}/${ENV.RETRY_ATTEMPTS} | ${url}`);
+        logger.log(`Retry ${attempt}/${ENV.RETRY_ATTEMPTS} | ${url}`);
         const retryAfter =
           ENV.RETRY_DELAY_MS * attempt + Math.random() * ENV.RETRY_JITTER_MS;
         await new Promise((r) => setTimeout(r, retryAfter));
@@ -105,7 +116,7 @@ export async function axiosHead<T>(
         error instanceof AxiosError &&
         error.response?.status === HttpStatusCode.TooManyRequests;
       if (isRateLimit && attempt < ENV.RETRY_ATTEMPTS) {
-        logger.log(`Rate limited ${attempt}/${ENV.RETRY_ATTEMPTS} HEAD | ${url}`);
+        logger.log(`Retry ${attempt}/${ENV.RETRY_ATTEMPTS} HEAD | ${url}`);
         const retryAfter =
           ENV.RETRY_DELAY_MS * attempt + Math.random() * ENV.RETRY_JITTER_MS;
         await new Promise((r) => setTimeout(r, retryAfter));
