@@ -4,7 +4,7 @@
 - Add label to subtitle to known which provider it from
 - Support aiostream format for title
 - Add retry logic if got rate limit (too many request)
-  1. Up to MAX_RETRIES
+  1. Up to RETRY_TIMEOUT_MS
   2. Delay after RETRY_DELAY_MS with exponential backup
   3. Add RETRY_JITTER_MS for offset retry
 - Each provider has different rate limit client

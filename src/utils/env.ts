@@ -2,7 +2,6 @@ import { z } from "zod";
 const envSchema = z.object({
   // REQUIRED
   TMDB_API_KEY: z.string().min(1, "TMDB_API_KEY is required"),
-  TVDB_API_KEY: z.string().min(1, "TVDB_API_KEY is required"),
 
   // OPTIONAL with Defaults
   DISPLAY_NAME: z.string().default("yastream"),
@@ -13,8 +12,9 @@ const envSchema = z.object({
   MIN_MATCHING_SCORE: z.coerce.number().min(0).max(100).default(75),
 
   // Optional key
-  RPDB_API_KEY: z.string().default("t0-free-rpdb"),
+  TVDB_API_KEY: z.string().default(""),
   TMDB_KEY: z.string().default(""),
+  RPDB_API_KEY: z.string().default("t0-free-rpdb"),
   DEBUG_KEY: z.string().default("debug-key"),
 
   // Server configuration
@@ -22,9 +22,10 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(55913),
   CACHE_SIZE_MB: z.coerce.number().default(100),
   // Retry configuration
-  RETRY_ATTEMPTS: z.coerce.number().default(8),
-  RETRY_DELAY_MS: z.coerce.number().default(2000),
-  RETRY_JITTER_MS: z.coerce.number().default(1000),
+  RETRY_ATTEMPTS: z.coerce.number().default(4),
+  RETRY_TIMEOUT_MS: z.coerce.number().default(15000),
+  RETRY_DELAY_MS: z.coerce.number().default(1500),
+  RETRY_JITTER_MS: z.coerce.number().default(500),
   LOG_LEVEL: z
     .enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "NONE"])
     .default("INFO"),

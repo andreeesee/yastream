@@ -68,14 +68,16 @@ if (ENV.ENABLE_ANALYTICS) {
   );
 }
 
-const limiter = rateLimiter({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  limit: 40,
-  keyGenerator: (c) =>
-    c.req.header("x-forwarded-for") ||
-    c.req.header("cf-connecting-ip") ||
-    "anonymous",
-});
+// Limit from same IP to prevent abuse
+const limiter = (windowMs: number = 15 * 60 * 1000, limit: number = 40) =>
+  rateLimiter({
+    windowMs: windowMs,
+    limit: limit,
+    keyGenerator: (c) =>
+      c.req.header("x-forwarded-for") ||
+      c.req.header("cf-connecting-ip") ||
+      "anonymous",
+  });
 
 // Handle config routes
 app.get("/manifest.json", (c) => {
@@ -98,7 +100,7 @@ const stremioRoutes = [
   "/subtitles/*",
 ];
 stremioRoutes.forEach((route) => {
-  app.use(route, limiter);
+  app.use(route, limiter());
   app.get(route, async (c: Context) => {
     const defaultManifest = buildManifest();
     const builder = new AddonBuilder(defaultManifest);
@@ -149,7 +151,7 @@ const configStremioRoutes = [
   "/:configBase64/subtitles/*",
 ];
 configStremioRoutes.forEach((route) => {
-  app.use(route, limiter);
+  app.use(route, limiter());
   app.get(route, async (c: Context) => {
     const configBase64 = c.req.param("configBase64") as string;
     const config = decodeConfig(configBase64);
