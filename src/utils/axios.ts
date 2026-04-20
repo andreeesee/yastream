@@ -15,9 +15,9 @@ function createClient(
 ) {
   const httpsAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: 20,
+    maxSockets: 30,
     maxFreeSockets: 10,
-    timeout: 10000,
+    timeout: 15000,
     scheduling: "fifo",
   });
   const instance = axios.create({ httpsAgent, headers });
@@ -66,7 +66,7 @@ export async function axiosGet<T>(
   const http = getClient(url);
   for (let attempt = 1; attempt <= ENV.RETRY_ATTEMPTS; attempt++) {
     try {
-      const data = (await http.get(url, { timeout: 5000, ...config })).data;
+      const data = (await http.get(url, { timeout: 8000, ...config })).data;
       cache.set(urlKey, data, cacheMs);
       return data as T;
     } catch (error: AxiosError | unknown) {
