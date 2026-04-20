@@ -107,7 +107,7 @@ export async function axiosHead<T>(
   let lastError: AxiosError | unknown;
   for (let attempt = 1; attempt <= ENV.RETRY_ATTEMPTS; attempt++) {
     try {
-      await defaultClient.head(url, { timeout: 5000, ...config });
+      await defaultClient.head(url, { timeout: 8000, ...config });
       cache.set(urlKey, true, 24 * 60 * 60 * 1000);
       return true;
     } catch (error) {
