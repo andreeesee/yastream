@@ -21,6 +21,7 @@ function createClient(
     timeout: 11000,
   });
   const instance = axios.create({ httpsAgent, headers });
+  return instance;
   return rateLimit(instance, {
     limits: [{ maxRequests, duration }],
   });
