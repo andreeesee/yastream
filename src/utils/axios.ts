@@ -92,7 +92,7 @@ export async function axiosGet<T>(
     }
   }
   logger.error(
-    `Fail GET | ${url} ${lastError instanceof AxiosError ? JSON.stringify(lastError) : lastError}`,
+    `Fail GET | ${url} ${lastError}`,
   );
   return null;
 }
