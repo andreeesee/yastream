@@ -24,12 +24,15 @@ import {
   buildSubtitleHandler,
 } from "./lib/addon.js";
 import { buildManifest, defaultConfig, UserConfig } from "./lib/manifest.js";
+import { initMigrations } from "./db/drizzle.js";
 import { Provider } from "./source/provider.js";
 import { cache } from "./utils/cache.js";
 import { getOrgin } from "./utils/domain.js";
 import { ENV } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";
 import { getSetDecryptedSubtitle } from "./utils/subtitle.js";
+
+initMigrations();
 
 const HOST = "0.0.0.0";
 const PORT = ENV.PORT;

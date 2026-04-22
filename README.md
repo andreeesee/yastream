@@ -36,11 +36,12 @@ To run this addon you can run the stable version (latest) with the docker-compos
 ```yaml
 services:
   yastream:
-    image: tamthai/yastream:latest # change tag to dev for nightly build
+    image: tamthai/yastream:latest # "dev" for nightly build
     container_name: yastream
     ports:
       - 55913:55913
-    env_file: .env
+    environment: # more info in .env.example
+      - TMDB_API_KEY=your-tmdb-api-key
     restart: unless-stopped
 ```
 
@@ -51,6 +52,7 @@ docker run -d \
   --name yastream \
   -p 55913:55913 \
   --env-file .env \
+  --volume ./data:/app/data \
   --restart unless-stopped \
   tamthai/yastream:latest
 ```

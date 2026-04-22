@@ -1,22 +1,22 @@
-FROM node:24-alpine AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 
 RUN npm install -g pnpm
-RUN apk add --no-cache --virtual .gyp \
-        python3 \
-        make \
-        g++ \
-    && npm install -g node-gyp
+
+# Install build tools for better-sqlite3
+RUN apt-get update && apt-get install -y python3 make g++
+
 COPY pnpm-lock.yaml package.json ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm run build
+RUN pnpm prune --prod
 
-FROM node:24-alpine AS production
+FROM node:24-slim AS production
 WORKDIR /app
 
-RUN apk add --no-cache ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/data ./data

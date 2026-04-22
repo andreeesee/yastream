@@ -1,4 +1,6 @@
 import Database from "better-sqlite3";
+import fs from "fs";
+import path from "path";
 import { Logger } from "../utils/logger.js";
 import { ENV } from "../utils/env.js";
 
@@ -14,6 +16,14 @@ class DatabaseManager {
   private db: Database.Database;
 
   constructor() {
+    const dbPath = ENV.DATABASE_URL;
+    // create folder if not exists
+    const dbDir = path.dirname(dbPath);
+    if (dbDir && !fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    this.db = new Database(dbPath);
+
     this.db = new Database(ENV.DATABASE_URL);
     this.db.pragma("journal_mode = WAL");
   }
