@@ -40,6 +40,8 @@ export async function parseStreamInfo(
       info = await parseM3u8(url);
     } else if (isMp4) {
       info = await parseMp4(url);
+    } else {
+      info = await parseDefault(url);
     }
   } catch (error) {
     logger.error(`Fail to parse stream info | ${error}`);
@@ -71,6 +73,24 @@ function getHours(durationSeconds: number) {
 
 function getMinutes(durationSeconds: number) {
   return Math.floor((durationSeconds / 60) % 60);
+}
+
+async function parseDefault(url: string): Promise<StreamInfo | undefined> {
+  const data = await getProbeInfo(url);
+  if (!data) return { size: 0 };
+  const hours = getHours(data.format.duration);
+  const minutes = getMinutes(data.format.duration);
+  const resolution: Resolution = {
+    width: data.streams[0]?.width!,
+    height: data.streams[0]?.height!,
+  };
+  let GB = data.format.size;
+  return {
+    size: GB,
+    hours: hours,
+    minutes: minutes,
+    resolution: resolution,
+  };
 }
 
 async function parseM3u8(url: string): Promise<StreamInfo | undefined> {

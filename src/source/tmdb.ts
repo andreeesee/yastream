@@ -3,7 +3,7 @@ import { AxiosRequestConfig } from "axios";
 import { URLSearchParams } from "url";
 import { axiosGet } from "../utils/axios.js";
 import { ENV } from "../utils/env.js";
-import { extractTitleYear, matchTitle, Search } from "../utils/fuse.js";
+import { extractTitle, matchTitle, Search } from "../utils/fuse.js";
 import { BaseMeta, ContentDetail } from "./meta.js";
 import { Provider } from "./provider.js";
 
@@ -23,6 +23,7 @@ export interface TmdbTvResult {
   overview: string;
   first_air_date: string;
   poster_path: string;
+  backdrop_path?: string;
 }
 export interface TmdbTvImages {
   backdrops: TmdbTvImage[];
@@ -61,6 +62,7 @@ export interface TmdbMovieResult {
   overview: string;
   release_date: string;
   poster_path: string;
+  backdrop_path?: string;
 }
 
 interface TmdbSeach extends Search {}
@@ -82,7 +84,7 @@ class TMDBService extends BaseMeta {
     type: ContentType,
     year?: number,
   ): Promise<ContentDetail | null> {
-    const extracted = extractTitleYear(search);
+    const extracted = extractTitle(search);
     search = extracted.title;
     year = extracted.year || year;
     if (type === "series") {
@@ -188,21 +190,7 @@ class TMDBService extends BaseMeta {
   ): Promise<ContentDetail | null> {
     try {
       const movieResponse = await this.getSearchMovie(title, year);
-      const results = movieResponse.results.map((movie) => {
-        const year = new Date(movie.release_date).getFullYear();
-        const thumbnail = `${this.imageUrl}/t/p/w500${movie.poster_path}`;
-        const search: ContentDetail = {
-          id: movie.id.toString(),
-          title: movie.title,
-          overview: movie.overview,
-          thumbnail: thumbnail,
-          year: year,
-          type: "movie",
-          tmdbId: movie.id,
-          ...(movie.imdb_id && { imdbId: movie.imdb_id }),
-        };
-        return search;
-      });
+      const results = this.getMovies(movieResponse.results);
       const movie = matchTitle(results, title, year)[0];
       if (movie) {
         const detail = await this.getMovieDetail(movie.id);
@@ -217,7 +205,6 @@ class TMDBService extends BaseMeta {
       return null;
     }
   }
-
   async findMovieDetail(imdbId: string): Promise<ContentDetail | null> {
     try {
       const movieResponse: TmdbFindResponse = await this._getRequest(
@@ -229,16 +216,7 @@ class TMDBService extends BaseMeta {
       const movie = movieResponse.movie_results?.[0];
 
       if (movie) {
-        const year = new Date(movie.release_date).getFullYear();
-        this.logger.log(`Found | ${movie.title} ${year}`);
-        return {
-          id: imdbId,
-          title: movie.title,
-          overview: movie.overview,
-          year: year,
-          type: "movie",
-          tmdbId: movie.id,
-        };
+        return this.getDetailFromMovie(movie);
       }
 
       return null;
@@ -246,6 +224,29 @@ class TMDBService extends BaseMeta {
       this.logger.error(`Find movie | ${error.message}`);
       return null;
     }
+  }
+  getMovies(movies: TmdbMovieResult[]) {
+    return movies.map((movie) => {
+      return this.getDetailFromMovie(movie);
+    });
+  }
+  getDetailFromMovie(movie: TmdbMovieResult): ContentDetail {
+    const year = new Date(movie.release_date).getFullYear();
+    const thumbnail = `${this.imageUrl}/t/p/w500${movie.poster_path}`;
+    const background = movie.backdrop_path
+      ? `${this.imageUrl}/t/p/w500${movie.backdrop_path}`
+      : thumbnail;
+    return {
+      id: movie.id.toString(),
+      title: movie.title,
+      overview: movie.overview,
+      thumbnail: thumbnail,
+      background: background,
+      year: year,
+      type: "movie",
+      tmdbId: movie.id,
+      ...(movie.imdb_id && { imdbId: movie.imdb_id }),
+    };
   }
 
   async findSeriesDetail(imdbId: string): Promise<ContentDetail | null> {
@@ -267,6 +268,7 @@ class TMDBService extends BaseMeta {
           year: year,
           type: "series",
           tmdbId: series.id,
+          imdbId: imdbId,
         };
       }
 

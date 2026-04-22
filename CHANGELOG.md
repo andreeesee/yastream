@@ -1,3 +1,8 @@
+# v0.6.0 2026-04-22
+
+- Add sqlite database for long storage
+- Check and show rate limit for each resource
+
 # v0.5.0 2026-04-19
 
 - Add logo to README.md

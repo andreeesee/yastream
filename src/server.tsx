@@ -1,7 +1,16 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { AddonBuilder, createRouter } from "@stremio-addon/sdk";
+import {
+  AddonBuilder,
+  createRouter,
+  MetaDetail,
+  MetaPreview,
+  ShortManifestResource,
+  Stream,
+  Subtitle,
+} from "@stremio-addon/sdk";
 import { Umami } from "@umami/node";
+import axios from "axios";
 import fs from "fs";
 import { Context, Hono } from "hono";
 import { rateLimiter } from "hono-rate-limiter";
@@ -17,6 +26,7 @@ import {
 import { buildManifest, defaultConfig, UserConfig } from "./lib/manifest.js";
 import { Provider } from "./source/provider.js";
 import { cache } from "./utils/cache.js";
+import { getOrgin } from "./utils/domain.js";
 import { ENV } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";
 import { getSetDecryptedSubtitle } from "./utils/subtitle.js";
@@ -35,8 +45,8 @@ app.use("*", cors());
 if (ENV.ENABLE_ANALYTICS) {
   const umami = new Umami();
   umami.init({
-    websiteId: "f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c",
-    hostUrl: "https://umami-fs.tamthai.de",
+    websiteId: ENV.UMAMI_WEBSITE_ID,
+    hostUrl: ENV.UMAMI_URL,
   });
   app.on(
     "GET",
@@ -68,16 +78,146 @@ if (ENV.ENABLE_ANALYTICS) {
   );
 }
 
-// Limit from same IP to prevent abuse
-const limiter = (windowMs: number = 15 * 60 * 1000, limit: number = 40) =>
-  rateLimiter({
-    windowMs: windowMs,
-    limit: limit,
-    keyGenerator: (c) =>
-      c.req.header("x-forwarded-for") ||
-      c.req.header("cf-connecting-ip") ||
-      "anonymous",
-  });
+const getLimiter = (
+  resource: ShortManifestResource,
+  windowMs: number = 30 * 60 * 1000,
+  limit: number = 30,
+) => {
+  const getDescription = (remaining: number) => {
+    const description = "Too Many Request\nRetry after";
+    getRetryAfterText(remaining);
+    return `${description} ${getRetryAfterText(remaining)}`;
+  };
+  const getRetryAfterText = (remaining: number) => {
+    if (remaining < 60) {
+      return `${remaining} seconds`;
+    } else {
+      const minutes = Math.ceil(remaining / 60);
+      return `${minutes} minutes`;
+    }
+  };
+  const getName = () => `⏱️${ENV.DISPLAY_NAME}\nRate Limit`;
+  const limiter = (resource: ShortManifestResource) => {
+    return rateLimiter({
+      windowMs: windowMs,
+      limit: limit,
+      keyGenerator: (c) => {
+        const ip =
+          c.req.header("x-forwarded-for") ||
+          c.req.header("cf-connecting-ip") ||
+          "anonymous";
+        const userAgent = c.req.header("user-agent")?.slice(0, 50) || "";
+        const key = `${ip}:${userAgent}`;
+        return key;
+      },
+      handler: (c) => {
+        const ip =
+          c.req.header("x-forwarded-for") ||
+          c.req.header("cf-connecting-ip") ||
+          "anonymous";
+        const remaining = c.res.headers.get("RateLimit-Reset") ?? "5";
+        const description = getDescription(parseInt(remaining));
+        logger.error(
+          `Rate limit | Resource: ${resource}, IP: ${ip}, Wait: ${remaining}s`,
+        );
+        if (ENV.NTFY_URL) {
+          axios.post(
+            ENV.NTFY_URL,
+            `
+            **Yastream Rate Limit**
+            - resource: ${resource}
+            - ip: ${ip}
+            - wait: ${getRetryAfterText(parseInt(remaining))}
+            - request: ${c.req.path}
+            `,
+            { headers: { Markdown: "yes" } },
+          );
+        }
+        if (ENV.ENABLE_ANALYTICS) {
+          const umami = new Umami();
+          umami.init({
+            websiteId: ENV.UMAMI_WEBSITE_ID,
+            hostUrl: ENV.UMAMI_URL,
+          });
+          umami.send(
+            {
+              website: ENV.UMAMI_WEBSITE_ID,
+              name: "ratelimit",
+              data: {
+                resource: resource,
+                ip: ip,
+                wait: getRetryAfterText(parseInt(remaining)),
+                request: c.req.path,
+              },
+            },
+            "event",
+          );
+        }
+        let limitResponse = {};
+        switch (resource) {
+          case "catalog":
+            const catalogLimit: { metas: MetaPreview[] } = {
+              metas: [
+                {
+                  id: "catalog.ratelimit",
+                  type: "series",
+                  name: getName(),
+                  description: description,
+                },
+              ],
+            };
+            limitResponse = catalogLimit;
+            break;
+          case "meta":
+            const metaLimit: { meta: MetaDetail } = {
+              meta: {
+                id: "meta.ratelimit",
+                type: "series",
+                name: getName(),
+                description: description,
+              },
+            };
+            limitResponse = metaLimit;
+            break;
+          case "stream":
+            const streamsLimit: { streams: Stream[] } = {
+              streams: [
+                {
+                  name: getName(),
+                  description: description,
+                  externalUrl: getOrgin(),
+                },
+              ],
+            };
+            limitResponse = streamsLimit;
+            break;
+          case "subtitles":
+            const subtitlesLimit: { subtitles: Subtitle[] } = {
+              subtitles: [
+                {
+                  label: description,
+                  id: "subtitles.ratelimit",
+                  url: getOrgin(),
+                  lang: "eng",
+                },
+              ],
+            };
+            limitResponse = subtitlesLimit;
+            break;
+          default:
+            limitResponse = { description: description };
+            break;
+        }
+        return c.json({ ...limitResponse, retryAfter: remaining }, 200);
+      },
+    });
+  };
+  return limiter(resource);
+};
+const catalogLimiter = getLimiter("catalog", 5 * 60 * 1000, 30);
+const metaLimiter = getLimiter("meta", 5 * 60 * 1000, 30);
+const streamLimiter = getLimiter("stream", 5 * 60 * 1000, 15);
+const subtitlesLimiter = getLimiter("subtitles", 5 * 60 * 1000, 15);
 
 // Handle config routes
 app.get("/manifest.json", (c) => {
@@ -92,16 +232,19 @@ app.get("/:configBase64/manifest.json", (c) => {
 });
 
 // Stremio addon routes handler
-const stremioRoutes = [
-  "/stremio/*",
-  "/catalog/*",
-  "/meta/*",
-  "/stream/*",
-  "/subtitles/*",
+interface RouteConfig {
+  route: string;
+  limiter: ReturnType<typeof rateLimiter>;
+}
+const stremioRoutes: RouteConfig[] = [
+  { route: "/catalog/*", limiter: catalogLimiter },
+  { route: "/meta/*", limiter: metaLimiter },
+  { route: "/stream/*", limiter: streamLimiter },
+  { route: "/subtitles/*", limiter: subtitlesLimiter },
 ];
 stremioRoutes.forEach((route) => {
-  app.use(route, limiter());
-  app.get(route, async (c: Context) => {
+  app.use(route.route, route.limiter);
+  app.get(route.route, async (c: Context) => {
     const defaultManifest = buildManifest();
     const builder = new AddonBuilder(defaultManifest);
     builder.defineCatalogHandler(async (args) => {
@@ -143,16 +286,15 @@ const decodeConfig = (configBase64: string): UserConfig => {
   }
 };
 
-const configStremioRoutes = [
-  "/:configBase64/stremio/*",
-  "/:configBase64/catalog/*",
-  "/:configBase64/meta/*",
-  "/:configBase64/stream/*",
-  "/:configBase64/subtitles/*",
+const configStremioRoutes: RouteConfig[] = [
+  { route: "/:configBase64/catalog/*", limiter: catalogLimiter },
+  { route: "/:configBase64/meta/*", limiter: metaLimiter },
+  { route: "/:configBase64/stream/*", limiter: streamLimiter },
+  { route: "/:configBase64/subtitles/*", limiter: subtitlesLimiter },
 ];
 configStremioRoutes.forEach((route) => {
-  app.use(route, limiter());
-  app.get(route, async (c: Context) => {
+  app.use(route.route, route.limiter);
+  app.get(route.route, async (c: Context) => {
     const configBase64 = c.req.param("configBase64") as string;
     const config = decodeConfig(configBase64);
     const manifest = buildManifest(config);

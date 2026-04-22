@@ -1,0 +1,235 @@
+import type { ContentType } from "@stremio-addon/sdk";
+import { and, eq, sql } from "drizzle-orm";
+import type { ContentDetail } from "../source/meta.js";
+import { Logger } from "../utils/logger.js";
+import { db } from "./drizzle.js";
+import { content, EContentInsert, type EContent } from "./schema/content.js";
+import { kv } from "./schema/kv.js";
+import {
+  EProviderContentInsert,
+  providerContent,
+  type EProviderContent,
+} from "./schema/provider_content.js";
+import { EStreamInsert, streams } from "./schema/streams.js";
+import { ESubtitleInsert, subtitles } from "./schema/subtitles.js";
+
+const logger = new Logger("QUERY");
+
+// CONTENT
+export async function upsertContent(
+  id: string,
+  contentData: ContentDetail,
+  ttlMs: number,
+) {
+  const now = Date.now();
+  const row: EContentInsert = {
+    id: id,
+    title: contentData.title,
+    altTitle: contentData.altTitle ?? null,
+    overview: contentData.overview,
+    year: contentData.year,
+    type: contentData.type,
+    imdbId: contentData.imdbId?.toString() ?? null,
+    tmdbId: contentData.tmdbId?.toString() ?? null,
+    tvdbId: contentData.tvdbId?.toString() ?? null,
+    poster: contentData.thumbnail,
+    background: contentData.thumbnail,
+    logo: contentData.logo ?? null,
+    genres: null,
+    createdAt: now,
+    updatedAt: null,
+    ttl: Math.floor(ttlMs / 1000),
+  };
+
+  try {
+    await db
+      .insert(content)
+      .values(row)
+      .onConflictDoUpdate({
+        target: content.id,
+        set: {
+          title: row.title,
+          altTitle: row.altTitle,
+          overview: row.overview,
+          year: row.year,
+          type: row.type,
+          imdbId: row.imdbId,
+          tmdbId: row.tmdbId,
+          tvdbId: row.tvdbId,
+          poster: row.poster,
+          background: row.background,
+          logo: row.logo,
+          genres: row.genres,
+          updatedAt: now,
+          ttl: row.ttl,
+        },
+      });
+    logger.log(`Upserted content ${contentData.title}`);
+  } catch (e) {
+    logger.error(`Failed to upsert content ${id} | ${e}`);
+  }
+}
+
+export async function getContentByTmdb(
+  tmdbId: string,
+  type: ContentType,
+): Promise<EContent | undefined> {
+  const row = await db.query.content.findFirst({
+    where: and(eq(content.tmdbId, tmdbId), eq(content.type, type)),
+  });
+  return row;
+}
+
+// PROVIDER_CONTENT
+export async function upsertProviderContent(
+  providerContentData: Omit<EProviderContentInsert, "createdAt" | "updatedAt">,
+) {
+  const now = Date.now();
+  const row = { ...providerContentData, createdAt: now, updatedAt: null };
+
+  try {
+    await db
+      .insert(providerContent)
+      .values(row)
+      .onConflictDoUpdate({
+        target: providerContent.id,
+        set: {
+          provider: row.provider,
+          contentId: row.contentId,
+          externalId: row.externalId,
+          title: row.title,
+          year: row.year,
+          type: row.type,
+          image: row.image,
+          updatedAt: now,
+          ttl: row.ttl,
+        },
+      });
+    logger.log(`Upserted provider_content ${row.title}`);
+  } catch (e) {
+    logger.error(
+      `Failed to upsert provider_content ${providerContentData.id} | ${e}`,
+    );
+  }
+}
+
+export async function getProviderContentById(
+  id: string,
+): Promise<EProviderContent | undefined> {
+  const row = await db.query.providerContent.findFirst({
+    where: eq(providerContent.id, id),
+  });
+  return row;
+}
+
+// STREAMS
+export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
+  const now = Date.now();
+  const rows = stream.map((r) => ({ ...r, createdAt: now }));
+  try {
+    await db
+      .insert(streams)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: streams.id,
+        set: {
+          providerContentId: sql.raw(
+            `excluded.${streams.providerContentId.name}`,
+          ),
+          provider: sql.raw(`excluded.${streams.provider.name}`),
+          externalId: sql.raw(`excluded.${streams.externalId.name}`),
+          season: sql.raw(`excluded.${streams.season.name}`),
+          episode: sql.raw(`excluded.${streams.episode.name}`),
+          url: sql.raw(`excluded.${streams.url.name}`),
+          playlist: sql.raw(`excluded.${streams.playlist.name}`),
+          resolution: sql.raw(`excluded.${streams.resolution.name}`),
+          ttl: sql.raw(`excluded.${streams.ttl.name}`),
+        },
+      });
+    const row = rows[0];
+    logger.log(
+      `Upserted streams ${row?.providerContentId}:${row?.season}:${row?.episode}`,
+    );
+  } catch (e) {
+    const row = rows[0];
+    logger.error(
+      `Failed to upsert streams ${row?.providerContentId}:${row?.season}:${row?.episode} | ${e}`,
+    );
+  }
+}
+
+// SUBTITLES
+export async function upsertSubtitles(
+  subtitlesData: Omit<ESubtitleInsert, "createdAt">[],
+) {
+  const now = Date.now();
+  const rows = subtitlesData.map((subtitle) => ({
+    id: subtitle.id,
+    providerContentId: subtitle.providerContentId,
+    url: subtitle.url,
+    lang: subtitle.lang,
+    season: subtitle.season,
+    episode: subtitle.episode,
+    subtitle: subtitle.subtitle,
+    createdAt: now,
+    ttl: subtitle.ttl,
+  }));
+
+  try {
+    await db
+      .insert(subtitles)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: subtitles.id,
+        set: {
+          url: sql.raw(`excluded.${subtitles.url.name}`),
+          season: sql.raw(`excluded.${subtitles.season.name}`),
+          episode: sql.raw(`excluded.${subtitles.episode.name}`),
+          subtitle: sql.raw(`excluded.${subtitles.subtitle.name}`),
+          ttl: sql.raw(`excluded.${subtitles.ttl.name}`),
+        },
+      });
+    const row = rows[0];
+    logger.log(
+      `Upserted subtitles ${row?.providerContentId}:${row?.season}:${row?.episode}`,
+    );
+  } catch (e) {
+    const row = rows[0];
+    logger.error(
+      `Failed to upsert subtitles ${row?.providerContentId}:${row?.season}:${row?.episode} | ${e}`,
+    );
+  }
+}
+
+// KV
+export function setKv(
+  key: string,
+  value: any,
+  size: number,
+  expiresAt: number,
+) {
+  db.insert(kv)
+    .values({
+      key,
+      value: JSON.stringify(value),
+      size: size,
+      createdAt: Date.now(),
+      expiresAt: expiresAt,
+    })
+    .onConflictDoUpdate({
+      target: kv.key,
+      set: {
+        value: sql.raw(`excluded.${kv.value.name}`),
+        size: sql.raw(`excluded.${kv.size.name}`),
+        createdAt: sql.raw(`excluded.${kv.createdAt.name}`),
+        expiresAt: sql.raw(`excluded.${kv.expiresAt.name}`),
+      },
+    })
+    .run();
+}
+export function getKv(key: string) {
+  const row = db.query.kv.findFirst({
+    where: eq(kv.key, key),
+  });
+  return row.sync();
+}

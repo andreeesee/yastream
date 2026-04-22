@@ -119,15 +119,26 @@ export const normalize = (str: string) => {
 
 const YEAR_SYNTAX_REGEX = /\s*\((\d{4})\)\s*/g;
 
-export function extractTitleYear(rawTitle: string) {
+export function extractTitle(rawTitle: string) {
   let year: number | undefined;
-
   const cleanTitle = rawTitle
     .replace(YEAR_SYNTAX_REGEX, (match, yearGroup) => {
       year = parseInt(yearGroup);
       return ""; // Remove the syntax from the title
     })
     .trim();
+  const { title, season } = extractSeason(cleanTitle);
+  return { title: title, year: year, season: season };
+}
 
-  return { title: cleanTitle, year };
+export function extractSeason(rawTitle: string) {
+  // title: Heart Signal Season 5
+  let season: number | undefined;
+  const cleanTitle = rawTitle
+    .replace(/Season\s+(\d+)/, (match, seasonGroup) => {
+      season = parseInt(seasonGroup);
+      return "";
+    })
+    .trim();
+  return { title: cleanTitle, season: season };
 }

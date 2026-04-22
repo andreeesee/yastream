@@ -14,6 +14,12 @@ import {
 import KissKHScraper from "../source/kisskh.js";
 // import TMDBService from "../source/tmdb.js";
 
+import {
+  getProviderContentById,
+  upsertProviderContent,
+} from "../db/queries.js";
+import { EProviderContent } from "../db/schema/provider_content.js";
+import { COMMON_TTL } from "../db/sqlite.js";
 import { IDramaScraper } from "../source/idrama.js";
 import { KkphimScraper } from "../source/kkphim.js";
 import { ContentDetail } from "../source/meta.js";
@@ -23,7 +29,7 @@ import { BaseProvider, Provider } from "../source/provider.js";
 import { tmdb } from "../source/tmdb.js";
 import { tvdb } from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
-import { extractTitleYear } from "../utils/fuse.js";
+import { extractTitle } from "../utils/fuse.js";
 import { Logger } from "../utils/logger.js";
 import { defaultConfig, Prefix, UserConfig } from "./manifest.js";
 const kisskh = new KissKHScraper(Provider.KISSKH);
@@ -54,7 +60,7 @@ async function getContent(
       let content = cacheContent;
       if (!content) {
         content = await tmdb.findDetailImdb(imdbId, contentType);
-        if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+        if (content) cache.set(contentKey, content, COMMON_TTL.content);
       }
       if (!content) {
         logger.error(`No TMDB found with IMDB ${imdbId}`);
@@ -77,7 +83,7 @@ async function getContent(
       let content: ContentDetail | null = cacheContent;
       if (!content) {
         content = await tmdb.getDetailTmdb(tmdbId, contentType);
-        if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+        if (content) cache.set(contentKey, content, COMMON_TTL.content);
       }
       if (!content) {
         // TMDB get from TMDB must return
@@ -101,7 +107,7 @@ async function getContent(
       let content: ContentDetail | null = cacheContent;
       if (!content) {
         content = await tvdb.getDetailTvdb(tvdbId, contentType);
-        if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+        if (content) cache.set(contentKey, content, COMMON_TTL.content);
       }
       if (!content) {
         logger.error(`Not found TVDB ${tvdbId}`);
@@ -131,7 +137,7 @@ async function getContent(
           season: season ? parseInt(season) : 1,
           episode: episode ? parseInt(episode) : 1,
         };
-        if (content) cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+        if (content) cache.set(contentKey, content, COMMON_TTL.content);
       }
       if (!content) {
         logger.error(`Not found IDrama ${idramaId}`);
@@ -149,20 +155,49 @@ async function getContent(
       const cacheContent = cache.get(contentKey);
       let content: ContentDetail | null = cacheContent;
       if (!content) {
-        const { title, releaseDate } = await kisskh.getDetail(kisskhId);
-        const extracted = extractTitleYear(title);
-        const pureTitle = extracted.title;
-        const year = extracted.year || new Date(releaseDate).getFullYear();
-        content = {
-          id: kisskhId,
-          kisskhId: kisskhId,
-          title: pureTitle,
-          year: year,
-          type: args.type,
-          season: season ? parseInt(season) : 1,
-          episode: episode ? parseInt(episode) : 1,
-        };
-        cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+        const providerContent = await getProviderContentById(
+          `${prefix}:${kisskhId}`,
+        );
+        if (providerContent) {
+          content = {
+            id: kisskhId,
+            kisskhId: kisskhId,
+            type: args.type,
+            title: providerContent.title,
+            year: providerContent.year,
+            season: season ? parseInt(season) : 1,
+            episode: episode ? parseInt(episode) : 1,
+          };
+        } else {
+          const { title, releaseDate, thumbnail } =
+            await kisskh.getDetail(kisskhId);
+          const extracted = extractTitle(title);
+          const pureTitle = extracted.title;
+          const year = extracted.year || new Date(releaseDate).getFullYear();
+          content = {
+            id: kisskhId,
+            kisskhId: kisskhId,
+            type: args.type,
+            title: pureTitle,
+            year: year,
+            season: season ? parseInt(season) : 1,
+            episode: episode ? parseInt(episode) : 1,
+          };
+          const providerContent: Omit<
+            EProviderContent,
+            "createdAt" | "updatedAt"
+          > = {
+            ...content,
+            id: `${Prefix.KISSKH}:${kisskhId}`,
+            contentId: null,
+            provider: Provider.KISSKH,
+            externalId: kisskhId,
+            image: thumbnail,
+            ttl: COMMON_TTL.content,
+          };
+          upsertProviderContent(providerContent);
+        }
+        cache.set(contentKey, content, COMMON_TTL.content);
       }
       if (!content) {
         logger.error(`Not found kisskh ${kisskhId}`);
@@ -180,21 +215,50 @@ async function getContent(
       const cacheContent = cache.get(contentKey);
       let content: ContentDetail | null = cacheContent;
       if (!content) {
-        const { title, year } = (await onetouchtv.getDetail(onetouchtvId))
-          .result;
-        const extracted = extractTitleYear(title);
-        const pureTitle = extracted.title;
-        const yearFormat = extracted.year || parseInt(year);
-        content = {
-          id: onetouchtvId,
-          onetouchtvId: onetouchtvId,
-          title: pureTitle,
-          year: yearFormat,
-          type: args.type,
-          season: season ? parseInt(season) : 1,
-          episode: episode ? parseInt(episode) : 1,
-        };
-        cache.set(contentKey, content, 24 * 60 * 60 * 1000);
+        const providerContent = await getProviderContentById(
+          `${prefix}:${onetouchtvId}`,
+        );
+        if (providerContent) {
+          content = {
+            id: onetouchtvId,
+            onetouchtvId: onetouchtvId,
+            type: args.type,
+            title: providerContent.title,
+            year: providerContent.year,
+            season: season ? parseInt(season) : 1,
+            episode: episode ? parseInt(episode) : 1,
+          };
+        } else {
+          const { title, year, image } = (
+            await onetouchtv.getDetail(onetouchtvId)
+          ).result;
+          const extracted = extractTitle(title);
+          const pureTitle = extracted.title;
+          const yearFormat = extracted.year || parseInt(year);
+          content = {
+            id: onetouchtvId,
+            onetouchtvId: onetouchtvId,
+            title: pureTitle,
+            year: yearFormat,
+            type: args.type,
+            season: season ? parseInt(season) : 1,
+            episode: episode ? parseInt(episode) : 1,
+          };
+          const providerContent: Omit<
+            EProviderContent,
+            "createdAt" | "updatedAt"
+          > = {
+            ...content,
+            id: `${Provider.ONETOUCHTV}:${onetouchtvId}`,
+            contentId: null,
+            provider: Provider.ONETOUCHTV,
+            externalId: onetouchtvId,
+            image: image,
+            ttl: COMMON_TTL.content,
+          };
+          upsertProviderContent(providerContent);
+        }
+        cache.set(contentKey, content, COMMON_TTL.content);
       }
       if (!content) {
         logger.error(`Not found onetouchtv ${onetouchtvId}`);
@@ -265,7 +329,7 @@ export async function buildMetaHandler(
     meta: {
       id: args.id,
       type: args.type,
-      name: "You should use AIOMetadata for this metadata. Fix by order AIOMetadata to be higher than yastream",
+      name: "Error getting meta. Please try again later.",
     },
   };
   try {

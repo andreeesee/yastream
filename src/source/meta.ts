@@ -10,14 +10,15 @@ export interface ContentDetail {
   year: number;
   type: ContentType;
   imdbId?: string;
-  tmdbId?: string | number;
-  tvdbId?: string | number;
+  tmdbId?: number;
+  tvdbId?: number;
   kisskhId?: string;
   onetouchtvId?: string;
   idramaId?: string;
   season?: number;
   episode?: number;
   thumbnail?: string;
+  background?: string;
   logo?: string;
 }
 

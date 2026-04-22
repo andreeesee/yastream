@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosRequestConfig, HttpStatusCode } from "axios";
-import rateLimit from "axios-rate-limit";
 import EventEmitter from "events";
 import https from "https";
+import { decryptString } from "../source/onetouchtv-crypto.js";
 import { cache } from "./cache.js";
 import { ENV } from "./env.js";
 import { Logger } from "./logger.js";
@@ -10,8 +10,8 @@ import { Logger } from "./logger.js";
 EventEmitter.defaultMaxListeners = 21;
 
 function createClient(
-  maxRequests: number,
-  duration: string = "1s",
+  // maxRequests: number,
+  // duration: string = "1s",
   headers: Record<string, string> = {},
 ) {
   const httpsAgent = new https.Agent({
@@ -22,13 +22,14 @@ function createClient(
   });
   const instance = axios.create({ httpsAgent, headers });
   return instance;
-  return rateLimit(instance, {
-    limits: [{ maxRequests, duration }],
-  });
+  // when need to queue requests to avoid rate limit, use this:
+  // return rateLimit(instance, {
+  //   limits: [{ maxRequests, duration }],
+  // });
 }
 
-const defaultClient = createClient(40);
-const kisskhClient = createClient(20, "5s", {
+const defaultClient = createClient();
+const kisskhClient = createClient({
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
   Accept: "application/json",
@@ -36,12 +37,16 @@ const kisskhClient = createClient(20, "5s", {
 const onetouchtvHost = Buffer.from("YXBpMy5kZXZjb3JwLm1l=", "base64").toString(
   "utf-8",
 );
-const onetouchtvClient = createClient(20, "3s", {
+const onetouchtvClient = createClient({
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
   Accept: "*/*",
   Origin: "https://onetouchtv.xyz",
   Referer: "https://onetouchtv.xyz",
+});
+onetouchtvClient.interceptors.response.use((response) => {
+  response.data = decryptString(response.data);
+  return response;
 });
 
 function getClient(url: string) {
@@ -70,7 +75,7 @@ export async function axiosGet<T>(
   while (true) {
     attempt++;
     try {
-      const data = (await http.get(url, { timeout: 8000, ...config })).data;
+      const data = (await http.get(url, { timeout: 10000, ...config })).data;
       cache.set(urlKey, data, cacheMs);
       return data as T;
     } catch (error: AxiosError | unknown) {
@@ -78,6 +83,9 @@ export async function axiosGet<T>(
       const status = error instanceof AxiosError && error.response?.status;
       let isRateLimit = status === HttpStatusCode.TooManyRequests;
       if (http === onetouchtvClient) {
+        logger.log(
+          `Error ${error instanceof AxiosError && error.response?.data}`,
+        );
         isRateLimit = isRateLimit || status === HttpStatusCode.NotFound;
       }
       if (!isRateLimit) break;

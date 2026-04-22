@@ -1,3 +1,4 @@
+import { getKv, setKv } from "../db/queries.js";
 import { ENV } from "./env.js";
 import { Logger } from "./logger.js";
 
@@ -39,6 +40,11 @@ class GlobalCache {
     // 4. Set the new item
     this.logger.debug(`Set ${ttlMs}ms | ${key}`);
     this.cache.set(key, { value, size: newSize, expiresAt });
+    try {
+      setKv(key, value, newSize, expiresAt);
+    } catch (e) {
+      this.logger.error(`Failed to persist cache to DB | ${key} | ${e}`);
+    }
     this.currentByteSize += newSize;
   }
 
@@ -46,6 +52,10 @@ class GlobalCache {
     const entry = this.cache.get(key);
     if (!entry) {
       this.logger.debug(`Miss | ${key}`);
+      const kvCache = getKv(key);
+      if (kvCache && Date.now() < kvCache.expiresAt) {
+        return JSON.parse(kvCache.value);
+      }
       return null;
     }
     if (Date.now() > entry.expiresAt) {

@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1776810092294,
+      "tag": "0000_smart_gamora",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776810664171,
+      "tag": "0001_organic_darwin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776866998099,
+      "tag": "0002_supreme_wrecking_crew",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1776867783578,
+      "tag": "0003_wise_glorian",
+      "breakpoints": true
+    }
+  ]
+}

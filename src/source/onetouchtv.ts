@@ -7,10 +7,28 @@ import {
   Stream,
   Subtitle,
 } from "@stremio-addon/sdk";
+import { uuidv7 } from "uuidv7";
+import {
+  getContentByTmdb,
+  getProviderContentById,
+  upsertContent,
+  upsertProviderContent,
+  upsertStream,
+  upsertSubtitles,
+} from "../db/queries.js";
+import { EProviderContentInsert } from "../db/schema/provider_content.js";
+import { EStreamInsert } from "../db/schema/streams.js";
+import { COMMON_TTL } from "../db/sqlite.js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
+import { cache } from "../utils/cache.js";
+import { extractTitle, matchTitle } from "../utils/fuse.js";
+import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
+import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { ContentDetail } from "./meta.js";
+import { getPosterUrl, PosterParam } from "./poster/poster.js";
 import { BaseProvider } from "./provider.js";
+import { tmdb } from "./tmdb.js";
 
 interface OnetouchtvTop {
   result: {
@@ -144,7 +162,7 @@ export class OnetouchtvScrapper extends BaseProvider {
     );
     const tmdbDetails = await Promise.all(
       searchResults.result.map((item) => {
-        const { title, year } = extractTitleYear(item.title);
+        const { title, year } = extractTitle(item.title);
         return tmdb.searchDetailImdb(title, type, year);
       }),
     );
@@ -199,31 +217,53 @@ export class OnetouchtvScrapper extends BaseProvider {
       if (catalogType === ONETOUCHTV_CATALOG["Popular"]) {
         const topUrl = `${this.baseUrl}/vod/top`;
         this.logger.log(`GET catalog | ${topUrl}`);
-        const encryptedData = await axiosGet<string>(topUrl);
-        if (!encryptedData) return [];
-        const data: OnetouchtvTop = decryptString(encryptedData);
+        const data = await axiosGet<OnetouchtvTop>(topUrl);
+        if (!data) return [];
+        // const data: OnetouchtvTop = decryptString(encryptedData);
         filteredData = data.result.day;
       } else {
         const url = `${this.baseUrl}/vod/home`;
         this.logger.log(`GET catalog | ${url}`);
-        const encryptedData = await axiosGet<string>(url);
-        if (!encryptedData) return [];
-        const data: OnetouchtvHome = decryptString(encryptedData);
+        const data = await axiosGet<OnetouchtvHome>(url);
+        if (!data) return [];
+        // const data: OnetouchtvHome = decryptString(encryptedData);
         filteredData = data.result.recents.filter(
           (item) => item.country === catalogType,
         );
       }
       const tmdbDetails = await Promise.all(
         filteredData.map((item) => {
-          const { title, year } = extractTitleYear(item.title);
+          const { title, year } = extractTitle(item.title);
           return tmdb.searchDetailImdb(title, type, year);
         }),
       );
-      filteredData = await Promise.all(
+      const metas = await Promise.all(
         filteredData.map(async (item, index) => {
+          const onetouchtvId = `${Prefix.ONETOUCHTV}:${item.id}`;
+          const metaDetail: MetaDetail = {
+            id: onetouchtvId,
+            name: item.title,
+            poster: item.image,
+            background: item.image,
+            type: type,
+          };
           const tmdbDetail = tmdbDetails[index];
           let poster = item.image;
           // Use TMDB/RPDB if available
+          const providerContent: Omit<
+            EProviderContentInsert,
+            "createdAt" | "updatedAt"
+          > = {
+            id: onetouchtvId,
+            contentId: null,
+            title: extractTitle(item.title).title,
+            ttl: COMMON_TTL.provider,
+            provider: this.name,
+            externalId: item.id,
+            image: item.image,
+            year: parseInt(item.year),
+            type: type,
+          };
           if (tmdbDetail) {
             const sameTitleId = this.onetouchTmdb.get(item.id);
             if (sameTitleId) {
@@ -236,28 +276,33 @@ export class OnetouchtvScrapper extends BaseProvider {
               fallbackUrl: tmdbDetail.thumbnail || poster,
             };
             poster = await getPosterUrl(posterParam, config);
+            // Save content to DB
+            const existingContent = await getContentByTmdb(tmdbDetail.id, type);
+            let contentId: string = uuidv7();
+            if (existingContent) {
+              contentId = existingContent.id;
+            } else {
+              upsertContent(contentId, tmdbDetail, COMMON_TTL.content);
+              upsertProviderContent({
+                ...providerContent,
+                contentId: contentId,
+              });
+            }
+          } else {
+            // not found tmdb
+            upsertProviderContent(providerContent);
           }
-          item.image = poster;
-          return item;
+          metaDetail.poster = poster;
+          if (type === "movie") {
+            metaDetail.behaviorHints = {
+              defaultVideoId: `${onetouchtvId}:1:1`,
+            };
+            return metaDetail;
+          }
+          return metaDetail;
         }),
       );
-      return filteredData.map((item) => {
-        const onetouchtvId = `${Prefix.ONETOUCHTV}:${item.id}`;
-        const metaDetail: MetaDetail = {
-          id: onetouchtvId,
-          name: item.title,
-          poster: item.image,
-          background: item.image,
-          type: type,
-        };
-        if (type === "movie") {
-          metaDetail.behaviorHints = {
-            defaultVideoId: `${onetouchtvId}:1:1`,
-          };
-          return metaDetail;
-        }
-        return metaDetail;
-      });
+      return metas;
     } catch (error) {
       this.logger.error(`Failed to get catalog ${args.id} | ${error}`);
       return [];
@@ -312,8 +357,8 @@ export class OnetouchtvScrapper extends BaseProvider {
     config: UserConfig,
   ): Promise<Stream[]> {
     try {
-      const { title, type, year, season, episode, onetouchtvId } = content;
-      const streamKey = `streams:${type}:${this.name}:${title}:${season}:${episode}`;
+      const { title, type, year, season, episode, onetouchtvId, id } = content;
+      const streamKey = `streams:${type}:${this.name}:${id}:${season}:${episode}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
       let detail = null;
@@ -328,10 +373,13 @@ export class OnetouchtvScrapper extends BaseProvider {
       if (!detail) return [];
       const identifier = detail.result.episodes[0]?.identifier;
       const episodeId = identifier || detail.result.id;
-      const episodeDetail = await this.getEpisode(
-        episodeId,
-        episode?.toString() || "1",
+      const episodeData = detail.result.episodes.find(
+        (ep) => ep.episode == episode?.toString(),
       );
+      if (!episodeData) return [];
+      const episodeParam = episodeData?.playId || episode?.toString() || "1";
+      const episodeDetail = await this.getEpisode(episodeId, episodeParam);
+      const streamRows: Omit<EStreamInsert, "createdAt">[] = [];
       const streams = await Promise.all(
         episodeDetail.result.sources.map(async (source, index) => {
           const info = config.info
@@ -354,10 +402,31 @@ export class OnetouchtvScrapper extends BaseProvider {
               filename: `${formatTitle}-${this.name}`,
             },
           };
+          const playlist = source.url.includes("m3u8")
+            ? await axiosGet<string>(source.url)
+            : null;
+          const streamRow: Omit<EStreamInsert, "createdAt"> = {
+            id: uuidv7(),
+            providerContentId: `${this.name}:${detail.result.id}`,
+            provider: this.name,
+            externalId: episodeId.toString(),
+            season: season?.toString() ?? "1",
+            episode: episode?.toString() ?? "1",
+            url: source.url,
+            resolution: info?.resolution
+              ? getDisplayResolution(info.resolution)
+              : null,
+            playlist: playlist,
+            ttl: COMMON_TTL.stream,
+          };
+          streamRows.push(streamRow);
           return stream;
         }),
       );
-      if (streams.length > 0) cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
+      if (streams.length > 0) {
+        cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
+        upsertStream(streamRows);
+      }
       return streams;
     } catch (error) {
       this.logger.error(`Fail to get streams ${content.title} | ${error}`);
@@ -379,11 +448,12 @@ export class OnetouchtvScrapper extends BaseProvider {
       if (!searchResult) return [];
       detail = await this.getDetail(searchResult.id);
     }
-    const epId = detail.result.episodes[0]?.identifier || detail.result.id;
-    const episodeDetail = await this.getEpisode(
-      epId,
-      content.episode?.toString() || "1",
+    const episodeId = detail.result.episodes[0]?.identifier || detail.result.id;
+    const episodeData = detail.result.episodes.find(
+      (ep) => ep.episode == episode?.toString(),
     );
+    const episodeParam = episodeData?.playId || episode?.toString() || "1";
+    const episodeDetail = await this.getEpisode(episodeId, episodeParam);
     const subtitles = episodeDetail.result.track.map((source, index) => {
       const countryCode: CountryCode =
         ONETOUCHTV_LANGUAGE[source.name] || CountryCode.multi;
@@ -396,7 +466,19 @@ export class OnetouchtvScrapper extends BaseProvider {
       };
       return subtitle;
     });
-    if (subtitles.length > 0) cache.set(subKey, subtitles, 4 * 60 * 60 * 1000);
+    if (subtitles.length > 0) {
+      cache.set(subKey, subtitles, 4 * 60 * 60 * 1000);
+      upsertSubtitles(
+        await Promise.all(
+          subtitles.map(async (subtitle) => ({
+            ...subtitle,
+            id: uuidv7(),
+            providerContentId: `${this.name}:${id}`,
+            subtitle: await axiosGet<string>(subtitle.url),
+          })),
+        ),
+      );
+    }
     return subtitles;
   }
 
@@ -408,9 +490,9 @@ export class OnetouchtvScrapper extends BaseProvider {
   ): Promise<OnetouchtvSearch> {
     const url = `${this.baseUrl}/vod/search?page=1&keyword=${title}`;
     this.logger.log(`GET search | ${url}`);
-    const encryptedData = await axiosGet<string>(url);
-    if (!encryptedData) throw new Error("Failed to get search results");
-    const data: OnetouchtvSearch = decryptString(encryptedData);
+    const data = await axiosGet<OnetouchtvSearch>(url);
+    if (!data) throw new Error("Failed to get search results");
+    // const data: OnetouchtvSearch = decryptString(encryptedData);
     const result = data.result;
     const details = isFilter ? matchTitle(result, title, year, season) : result;
     if (!details[0]) throw new Error("No matching search results");
@@ -420,88 +502,40 @@ export class OnetouchtvScrapper extends BaseProvider {
   async getDetail(id: string): Promise<OnetouchtvDetail> {
     const url = `${this.baseUrl}/vod/${id}/detail`;
     this.logger.log(`GET detail | ${url}`);
-    const encryptedDetail = await axiosGet<string>(url);
-    if (!encryptedDetail) throw new Error("Failed to get detail");
-    const detailData: OnetouchtvDetail = decryptString(encryptedDetail);
+    const detailData = await axiosGet<OnetouchtvDetail>(url);
+    if (!detailData) throw new Error("Failed to get detail");
+    // const detailData: OnetouchtvDetail = decryptString(encryptedDetail);
+
+    // Save provider content
+    const providerContentId = `${this.name}:${id}`;
+    const existContent = await getProviderContentById(providerContentId);
+    if (!existContent) {
+      const providerContent: Omit<
+        EProviderContentInsert,
+        "createdAt" | "updatedAt"
+      > = {
+        id: `${this.name}:${detailData.result.id}`,
+        contentId: null,
+        provider: this.name,
+        externalId: detailData.result.id,
+        image: detailData.result.image,
+        ttl: COMMON_TTL.content,
+        type: "movie",
+        title: extractTitle(detailData.result.title).title,
+        year: parseInt(detailData.result.year),
+      };
+      upsertProviderContent(providerContent);
+    }
+
     return detailData;
   }
 
   async getEpisode(id: string, episode: string): Promise<OnetouchtvEpisode> {
     const url = `${this.baseUrl}/vod/${id}/episode/${episode}`;
     this.logger.log(`GET episode detail | ${url}`);
-    const encryptedDetail = await axiosGet<string>(url);
-    if (!encryptedDetail) throw new Error("Failed to get episode detail");
-    const detailData: OnetouchtvEpisode = decryptString(encryptedDetail);
+    const detailData = await axiosGet<OnetouchtvEpisode>(url);
+    if (!detailData) throw new Error("Failed to get episode detail");
+    // const detailData: OnetouchtvEpisode = decryptString(encryptedDetail);
     return detailData;
-  }
-}
-
-// Decryption
-import crypto from "crypto";
-import { cache } from "../utils/cache.js";
-import { extractTitleYear, matchTitle } from "../utils/fuse.js";
-import { parseStreamInfo } from "../utils/info.js";
-import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
-import { getPosterUrl, PosterParam } from "./poster/poster.js";
-import { tmdb } from "./tmdb.js";
-const KEY_HEX = Buffer.from(
-  "Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ2ZjY2NjQ0OTZlNjk3NDU2NjU2Mzc0NmY3MjUzNzQ2ZA==",
-  "base64",
-).toString();
-const IV_HEX = Buffer.from(
-  "Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ=",
-  "base64",
-).toString();
-const KEY = Buffer.from(KEY_HEX, "hex");
-const IV = Buffer.from(IV_HEX, "hex");
-
-function normalizeCustomAlphabet(s: string): string {
-  return s.replace(/-_\./g, "/").replace(/@/g, "+").replace(/\s+/g, "");
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  let base64 = b64;
-  const pad = base64.length % 4;
-  if (pad !== 0) base64 += "=".repeat(4 - pad);
-  try {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  } catch (e) {
-    throw new Error("Invalid base64");
-  }
-}
-
-function parseResult(text: string): any {
-  try {
-    const json = JSON.parse(text);
-    const res = json;
-    return typeof res === "string" ? JSON.parse(res) : res || json;
-  } catch {
-    return text;
-  }
-}
-
-function decryptString<T>(input: string): T {
-  try {
-    const normalized = normalizeCustomAlphabet(input);
-    const cipherBytes = base64ToBytes(normalized);
-    if (cipherBytes.length % 16 !== 0) {
-      throw new Error(
-        `Ciphertext length (${cipherBytes.length}) not multiple of 16`,
-      );
-    }
-    const decipher = crypto.createDecipheriv("aes-256-cbc", KEY, IV);
-    const decrypted = Buffer.concat([
-      decipher.update(cipherBytes),
-      decipher.final(),
-    ]);
-    return parseResult(decrypted.toString("utf8"));
-  } catch (error) {
-    console.error("Decryption failed:", error);
-    throw new Error("Decryption failed");
   }
 }

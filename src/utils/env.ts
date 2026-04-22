@@ -34,6 +34,16 @@ const envSchema = z.object({
   // Cache warming
   WARM_CACHE: z.coerce.boolean().default(true),
 
+  // Analytics Umami
+  UMAMI_WEBSITE_ID: z.string().default("f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"),
+  UMAMI_URL: z.url().default("https://umami-fs.tamthai.de"),
+
+  // Notification
+  NTFY_URL: z.url().default(""),
+
+  // Database
+  DATABASE_URL: z.string().default("data/yastream.db"),
+
   // Kisskh domains
   KISSKH_URLS: z
     .string()

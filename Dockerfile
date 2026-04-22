@@ -2,6 +2,11 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 RUN npm install -g pnpm
+RUN apk add --no-cache --virtual .gyp \
+        python3 \
+        make \
+        g++ \
+    && npm install -g node-gyp
 COPY pnpm-lock.yaml package.json ./
 RUN pnpm install --frozen-lockfile
 
@@ -11,13 +16,12 @@ RUN pnpm run build
 FROM node:24-alpine AS production
 WORKDIR /app
 
-RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
 RUN apk add --no-cache ffmpeg
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/data ./data
 COPY --from=builder /app/CHANGELOG.md ./CHANGELOG.md
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public ./public
 

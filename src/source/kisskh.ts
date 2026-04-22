@@ -8,12 +8,23 @@ import {
   Subtitle,
 } from "@stremio-addon/sdk";
 import * as cheerio from "cheerio";
+import { uuidv7 } from "uuidv7";
+import {
+  getContentByTmdb,
+  getProviderContentById,
+  upsertContent,
+  upsertProviderContent,
+  upsertStream,
+  upsertSubtitles,
+} from "../db/queries.js";
+import { ESubtitleInsert } from "../db/schema/subtitles.js";
+import { COMMON_TTL } from "../db/sqlite.js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
 import { ENV } from "../utils/env.js";
-import { matchTitle } from "../utils/fuse.js";
-import { parseStreamInfo } from "../utils/info.js";
+import { extractTitle, matchTitle } from "../utils/fuse.js";
+import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getSetDecryptedSubtitle } from "../utils/subtitle.js";
 import { ContentDetail } from "./meta.js";
@@ -98,7 +109,7 @@ class KissKHScraperr extends BaseProvider {
     return this.getBaseUrl() + "/api/DramaList/List";
   }
   private getDetailUrl() {
-    return this.getBaseUrl() + "/api/DramaList/Drama/";
+    return this.getBaseUrl() + "/api/DramaList/Drama";
   }
   private getEpisodeUrl() {
     return this.getBaseUrl() + "/api/DramaList/Episode/{id}.png?kkey=";
@@ -251,7 +262,7 @@ class KissKHScraperr extends BaseProvider {
       flatDatas.map(async (kissItem, index) => {
         const tmdbDetail = tmdbDetails[index];
         let poster = kissItem.thumbnail;
-
+        let id = `${Prefix.KISSKH}:${kissItem.id}`;
         // Use TMDB/RPDB if available
         if (tmdbDetail) {
           const sameTitleId = this.kisskhTmdb.get(kissItem.id);
@@ -265,17 +276,32 @@ class KissKHScraperr extends BaseProvider {
             fallbackUrl: tmdbDetail.thumbnail || poster,
           };
           poster = await getPosterUrl(posterParam, config);
+
+          // Save content to DB
+          const existingContent = await getContentByTmdb(tmdbDetail.id, type);
+          let contentId: string = uuidv7();
+          if (existingContent) {
+            contentId = existingContent.id;
+          } else {
+            upsertContent(contentId, tmdbDetail, COMMON_TTL.content);
+            upsertProviderContent({
+              title: kissItem.title,
+              ttl: COMMON_TTL.provider,
+              contentId: contentId,
+              provider: this.name,
+              externalId: kissItem.id.toString(),
+              image: kissItem.thumbnail,
+              year: tmdbDetail.year,
+              id: id,
+              type: type,
+            });
+          }
         }
 
         // NSFW Override
         if (!config.nsfw && this.nsfwIds.has(kissItem.id)) {
           poster = this.nsfwDefaultThumbnail;
         }
-
-        let id = `${Prefix.KISSKH}:${kissItem.id}`;
-        // if (tmdbDetail?.imdbId) {
-        //   id = `${tmdbDetail.imdbId}`;
-        // }
         const metaDetail: MetaDetail = {
           id: id,
           name: kissItem.title,
@@ -301,10 +327,16 @@ class KissKHScraperr extends BaseProvider {
     type: ContentType,
   ): Promise<MetaDetail | null> {
     const detail = await this.getDetail(content.id);
-    const year = new Date(detail.releaseDate).getFullYear();
-    const tmdbDetail = await tmdb.searchDetailImdb(detail.title, type, year);
+    let year = new Date(detail.releaseDate).getFullYear();
+    const tmdbDetail = await tmdb.searchDetailImdb(detail.title, type);
+    const background = tmdbDetail?.background || detail.thumbnail;
     if (tmdbDetail) {
       detail.description = tmdbDetail.overview || detail.description;
+      year = tmdbDetail.year;
+      const oldContent = await getContentByTmdb(tmdbDetail.id, type);
+      if (oldContent) {
+        upsertContent(oldContent.id, tmdbDetail, COMMON_TTL.content);
+      }
     }
     const season = 1;
     const date = new Date(detail.releaseDate).toISOString();
@@ -319,7 +351,7 @@ class KissKHScraperr extends BaseProvider {
         type: type,
         description: detail.description,
         thumbnail: detail.thumbnail,
-        background: detail.thumbnail,
+        background: background,
         season: season,
         episode: episodeNum,
       };
@@ -328,15 +360,37 @@ class KissKHScraperr extends BaseProvider {
     const meta: MetaDetail = {
       id: metaId,
       name: detail.title,
-      logo: tmdbDetail?.logo || "",
+      logo: tmdbDetail?.logo ?? "",
       poster: detail.thumbnail,
-      background: detail.thumbnail,
+      background: background,
       type: type,
       description: detail.description,
       country: detail.country,
       released: date,
       videos: videos,
     };
+
+    const existingContent = await getProviderContentById(metaId);
+    if (existingContent) {
+      await upsertProviderContent({
+        ...existingContent,
+        image: detail.thumbnail,
+        year: year,
+        ttl: null,
+      });
+    } else {
+      await upsertProviderContent({
+        id: metaId,
+        contentId: null,
+        title: detail.title,
+        ttl: null,
+        provider: this.name,
+        externalId: detail.id,
+        image: detail.thumbnail,
+        year: year,
+        type: type,
+      });
+    }
     return meta;
   }
 
@@ -448,11 +502,28 @@ class KissKHScraperr extends BaseProvider {
     const url = this._fixUrl(stream.Video);
     const subtitleKey = `subtitles:${type}:${this.name}:${id}:${season}:${episode}`;
     // Handle subtitles
-    let subtitles = cache.get(subtitleKey);
+    let subtitles: Subtitle[] | null = cache.get(subtitleKey);
     if (subtitles) cache.set(subtitleKey, subtitles);
     else {
       subtitles = await this._getSubtitles(episodeId);
       if (subtitles) cache.set(subtitleKey, subtitles);
+    }
+    if (subtitles) {
+      const subtitleRows: Omit<ESubtitleInsert, "createdAt">[] =
+        await Promise.all(
+          subtitles.map(async (subtitle) => {
+            const subtitleRow: Omit<ESubtitleInsert, "createdAt"> = {
+              ...subtitle,
+              id: uuidv7(),
+              providerContentId: `${this.name}:${kisskhId}`,
+              season: season?.toString() ?? "1",
+              episode: episode?.toString() ?? "1",
+              subtitle: await axiosGet<string>(subtitle.url),
+            };
+            return subtitleRow;
+          }),
+        );
+      upsertSubtitles(subtitleRows);
     }
     const info = config.info ? await parseStreamInfo(url) : undefined;
     const formatTitle = this.formatStreamTitle(
@@ -462,7 +533,7 @@ class KissKHScraperr extends BaseProvider {
       episode,
       info,
     );
-    const streams: Stream[] = [
+    const streamDatas: Stream[] = [
       {
         url: url,
         name: this.displayName,
@@ -474,7 +545,24 @@ class KissKHScraperr extends BaseProvider {
         },
       },
     ];
-    return streams;
+    const playlist = url.includes("m3u8") ? await axiosGet<string>(url) : null;
+    upsertStream([
+      {
+        id: uuidv7(),
+        providerContentId: `${this.name}:${kisskhId}`,
+        provider: this.name,
+        externalId: kisskhId.toString(),
+        season: season?.toString() ?? "1",
+        episode: episode?.toString() ?? "1",
+        url: url,
+        resolution: info?.resolution
+          ? getDisplayResolution(info.resolution)
+          : null,
+        playlist: playlist,
+        ttl: COMMON_TTL.stream,
+      },
+    ]);
+    return streamDatas;
   }
 
   private async _getToken(episodeId: string, uid: string): Promise<string> {
@@ -534,13 +622,34 @@ class KissKHScraperr extends BaseProvider {
   }
 
   public async getDetail(kisskhId: string): Promise<KisskhDetail> {
-    const url = `${this.getDetailUrl()}${kisskhId}`;
+    const url = `${this.getDetailUrl()}/${kisskhId}`;
     this.logger.log(`GET detail | ${url}`);
     const episodesData = await axiosGet<KisskhDetail>(url, {
       headers: this.headers,
     });
-    if (episodesData) return episodesData;
-    else throw new Error(`Not found detail from id | ${kisskhId}`);
+    if (episodesData) {
+      // // Save provider content
+      // const providerContentId = `${this.name}:${kisskhId}`;
+      // const existContent = await getProviderContentById(providerContentId);
+      // if (!existContent) {
+      //   const providerContent: Omit<
+      //     EProviderContentInsert,
+      //     "createdAt" | "updatedAt"
+      //   > = {
+      //     id: `${this.name}:${episodesData.id}`,
+      //     contentId: null,
+      //     provider: this.name,
+      //     externalId: episodesData.id,
+      //     image: episodesData.thumbnail,
+      //     ttl: COMMON_TTL.content,
+      //     type: type,
+      //     title: episodesData.title,
+      //     year: new Date(episodesData.releaseDate).getFullYear(),
+      //   };
+      //   upsertProviderContent(providerContent);
+      // }
+      return episodesData;
+    } else throw new Error(`Not found detail from id | ${kisskhId}`);
   }
 
   private async _getEpisode(seriesId: number, episode: number = 1) {
