@@ -205,10 +205,26 @@ const getLimiter = (
   };
   return limiter(resource);
 };
-const catalogLimiter = getLimiter("catalog", 10 * 60 * 1000, 20);
-const metaLimiter = getLimiter("meta", 10 * 60 * 1000, 20);
-const streamLimiter = getLimiter("stream", 10 * 60 * 1000, 10);
-const subtitlesLimiter = getLimiter("subtitles", 10 * 60 * 1000, 10);
+const catalogLimiter = getLimiter(
+  "catalog",
+  ENV.CATALOG_WINDOW_MINUTES * 60 * 1000,
+  ENV.CATALOG_REQUEST_LIMIT,
+);
+const metaLimiter = getLimiter(
+  "meta",
+  ENV.META_WINDOW_MINUTES * 60 * 1000,
+  ENV.META_REQUEST_LIMIT,
+);
+const streamLimiter = getLimiter(
+  "stream",
+  ENV.STREAM_WINDOW_MINUTES * 60 * 1000,
+  ENV.STREAM_REQUEST_LIMIT,
+);
+const subtitlesLimiter = getLimiter(
+  "subtitles",
+  ENV.SUBTITLES_WINDOW_MINUTES * 60 * 1000,
+  ENV.SUBTITLES_REQUEST_LIMIT,
+);
 
 // Handle config routes
 app.get("/manifest.json", (c) => {

@@ -29,12 +29,20 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "NONE"])
     .default("INFO"),
-  // Analytics: Coerces "1"/"0" or "true"/"false" to boolean
-  ENABLE_ANALYTICS: z.coerce.boolean().default(false),
   // Cache warming
   WARM_CACHE: z.coerce.boolean().default(true),
+  // Rate limit
+  CATALOG_WINDOW_MINUTES: z.coerce.number().default(10),
+  CATALOG_REQUEST_LIMIT: z.coerce.number().default(20),
+  META_WINDOW_MINUTES: z.coerce.number().default(10),
+  META_REQUEST_LIMIT: z.coerce.number().default(20),
+  STREAM_WINDOW_MINUTES: z.coerce.number().default(10),
+  STREAM_REQUEST_LIMIT: z.coerce.number().default(10),
+  SUBTITLES_WINDOW_MINUTES: z.coerce.number().default(10),
+  SUBTITLES_REQUEST_LIMIT: z.coerce.number().default(10),
 
-  // Analytics Umami
+  // Analytics
+  ENABLE_ANALYTICS: z.coerce.boolean().default(false),
   UMAMI_WEBSITE_ID: z.string().default("f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"),
   UMAMI_URL: z.url().default("https://umami-fs.tamthai.de"),
 

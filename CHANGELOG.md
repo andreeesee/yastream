@@ -1,3 +1,8 @@
+# v0.6.1 2026-04-23
+
+- Make database optional
+- Adjust rate limit, add config to env
+
 # v0.6.0 2026-04-22
 
 - Add sqlite database for long storage
