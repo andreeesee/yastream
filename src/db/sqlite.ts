@@ -15,16 +15,13 @@ export const COMMON_TTL = {
 class DatabaseManager {
   private db: Database.Database;
 
-  constructor() {
-    const dbPath = ENV.DATABASE_URL;
+  constructor(databaseUrl: string) {
     // create folder if not exists
-    const dbDir = path.dirname(dbPath);
+    const dbDir = path.dirname(databaseUrl);
     if (dbDir && !fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-    this.db = new Database(dbPath);
-
-    this.db = new Database(ENV.DATABASE_URL);
+    this.db = new Database(databaseUrl);
     this.db.pragma("journal_mode = WAL");
   }
 
@@ -45,4 +42,6 @@ class DatabaseManager {
   }
 }
 
-export const db = new DatabaseManager();
+export const db = ENV.DATABASE_URL
+  ? new DatabaseManager(ENV.DATABASE_URL)
+  : null;

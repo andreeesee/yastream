@@ -1,4 +1,9 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  sqliteTable,
+  text,
+  unique
+} from "drizzle-orm/sqlite-core";
 export const content = sqliteTable(
   "content",
   {
@@ -22,9 +27,9 @@ export const content = sqliteTable(
     ttl: integer("ttl"),
   },
   (table) => [
-    index("idx_content_imdb").on(table.imdbId, table.type),
-    index("idx_content_tmdb").on(table.tmdbId, table.type),
-    index("idx_content_tvdb").on(table.tvdbId, table.type),
+    unique("uq_content_imdb").on(table.imdbId, table.type),
+    unique("uq_content_tmdb").on(table.tmdbId, table.type),
+    unique("uq_content_tvdb").on(table.tvdbId, table.type),
   ],
 );
 

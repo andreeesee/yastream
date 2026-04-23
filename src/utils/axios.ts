@@ -7,7 +7,7 @@ import { ENV } from "./env.js";
 import { Logger } from "./logger.js";
 
 // process.setMaxListeners(20);
-EventEmitter.defaultMaxListeners = 21;
+EventEmitter.defaultMaxListeners = 23;
 
 function createClient(
   // maxRequests: number,
@@ -28,7 +28,15 @@ function createClient(
   // });
 }
 
-const defaultClient = createClient();
+const defaultClient = createClient({
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+  Accept: "aplication/json",
+  "Accept-Language": "en-US,en;q=0.5",
+  "Accept-Encoding": "gzip, deflate",
+  Connection: "keep-alive",
+  "Upgrade-Insecure-Requests": "1",
+});
 const kisskhClient = createClient({
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",

@@ -26,7 +26,7 @@ import { ENV } from "../utils/env.js";
 import { extractTitle, matchTitle } from "../utils/fuse.js";
 import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
-import { getSetDecryptedSubtitle } from "../utils/subtitle.js";
+import { getSetDecryptedSubtitle } from "./kisskh-subtitle.js";
 import { ContentDetail } from "./meta.js";
 import { getPosterUrl, PosterParam } from "./poster/poster.js";
 import { BaseProvider } from "./provider.js";

@@ -41,8 +41,8 @@ const envSchema = z.object({
   // Notification
   NTFY_URL: z.url().default(""),
 
-  // Database
-  DATABASE_URL: z.string().default("data/yastream.db"),
+  // Database (optional - only used when DATABASE_URL is set)
+  DATABASE_URL: z.string().optional(),
 
   // Kisskh domains
   KISSKH_URLS: z

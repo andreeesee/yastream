@@ -154,7 +154,7 @@ async function getContent(
       const contentKey = `content:kisskh:${kisskhId}`;
       const cacheContent = cache.get(contentKey);
       let content: ContentDetail | null = cacheContent;
-      if (!content) {
+      if (!cacheContent) {
         const providerContent = await getProviderContentById(
           `${prefix}:${kisskhId}`,
         );
@@ -183,7 +183,7 @@ async function getContent(
             season: season ? parseInt(season) : 1,
             episode: episode ? parseInt(episode) : 1,
           };
-          const providerContent: Omit<
+          const newProviderContent: Omit<
             EProviderContent,
             "createdAt" | "updatedAt"
           > = {
@@ -195,7 +195,7 @@ async function getContent(
             image: thumbnail,
             ttl: COMMON_TTL.content,
           };
-          upsertProviderContent(providerContent);
+          upsertProviderContent(newProviderContent);
         }
         cache.set(contentKey, content, COMMON_TTL.content);
       }

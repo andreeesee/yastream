@@ -1,8 +1,8 @@
 import { Buffer } from "buffer";
 import * as crypto from "crypto";
-import { axiosGet } from "./axios.js";
-import { cache } from "./cache.js";
-import { Logger } from "./logger.js";
+import { axiosGet } from "../utils/axios.js";
+import { cache } from "../utils/cache.js";
+import { Logger } from "../utils/logger.js";
 
 const logger = new Logger("SUB");
 

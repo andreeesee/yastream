@@ -8,7 +8,7 @@ export const kv = sqliteTable(
     createdAt: integer("created_at").notNull(),
     expiresAt: integer("expires_at").notNull(),
   },
-  (table) => [index("idx_kv_key").on(table.key)],
+  (table) => [index("idx_kv_expires_at").on(table.expiresAt)],
 );
 
 export type EKV = typeof kv.$inferSelect;

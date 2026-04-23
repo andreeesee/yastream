@@ -319,6 +319,21 @@ export class OnetouchtvScrapper extends BaseProvider {
       if (!detail) return null;
       const releaseDate =
         new Date(detail.year).toISOString() || new Date().toISOString();
+      let year = new Date(releaseDate).getFullYear();
+      const tmdbDetail = await tmdb.searchDetailImdb(detail.title, type);
+      if (tmdbDetail) {
+        detail.description = tmdbDetail.overview || detail.description;
+        year = tmdbDetail.year;
+        const oldContent = await getContentByTmdb(tmdbDetail.id, type);
+        if (oldContent) {
+          upsertContent(oldContent.id, tmdbDetail, COMMON_TTL.content);
+        }
+      }
+      const background = tmdbDetail?.background || detail.image;
+      const image = detail.image?.replace(
+        "image-7wk.pages.dev",
+        "image-v1.pages.dev",
+      );
       const videos: MetaVideo[] = detail.episodes.map((ep) => {
         const video = {
           id: `${Prefix.ONETOUCHTV}:${id}:${season}:${ep.episode}`,
@@ -326,8 +341,8 @@ export class OnetouchtvScrapper extends BaseProvider {
           released: releaseDate,
           season: 1,
           episode: parseInt(ep.episode),
-          thumbnail: detail.image,
-          background: detail.image,
+          thumbnail: image,
+          background: background,
         };
         return video;
       });
@@ -335,11 +350,8 @@ export class OnetouchtvScrapper extends BaseProvider {
         id: id,
         type: type,
         name: detail.title,
-        poster: detail.image,
-        background: detail.image?.replace(
-          "image-7wk.pages.dev",
-          "image-v1.pages.dev",
-        ),
+        poster: image,
+        background: background,
         description: detail.description,
         released: releaseDate,
         genres: detail.genres,

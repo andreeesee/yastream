@@ -235,18 +235,19 @@ class TMDBService extends BaseMeta {
     const thumbnail = `${this.imageUrl}/t/p/w500${movie.poster_path}`;
     const background = movie.backdrop_path
       ? `${this.imageUrl}/t/p/w500${movie.backdrop_path}`
-      : thumbnail;
-    return {
+      : undefined;
+    const content: ContentDetail = {
       id: movie.id.toString(),
       title: movie.title,
       overview: movie.overview,
       thumbnail: thumbnail,
-      background: background,
       year: year,
       type: "movie",
       tmdbId: movie.id,
-      ...(movie.imdb_id && { imdbId: movie.imdb_id }),
     };
+    if (background) content.background = background;
+    if (movie.imdb_id) content.imdbId = movie.imdb_id;
+    return content;
   }
 
   async findSeriesDetail(imdbId: string): Promise<ContentDetail | null> {
@@ -286,7 +287,7 @@ class TMDBService extends BaseMeta {
       if (movie) {
         const year = new Date(movie.release_date).getFullYear();
         const thumbnail = `${this.imageUrl}/t/p/w500${movie.poster_path}`;
-        return {
+        const content: ContentDetail = {
           id: movie.id.toString(),
           title: movie.title,
           overview: movie.overview,
@@ -294,8 +295,9 @@ class TMDBService extends BaseMeta {
           year: year,
           type: "movie",
           tmdbId: movie.id,
-          ...(movie.imdb_id && { imdbId: movie.imdb_id }),
         };
+        if (movie.imdb_id) content.imdbId = movie.imdb_id;
+        return content;
       }
 
       return null;
@@ -308,14 +310,14 @@ class TMDBService extends BaseMeta {
   async getSeriesDetail(id: string): Promise<ContentDetail | null> {
     this.logger.debug(`ID ${id}`);
     try {
-      const [series, imdbId] = await Promise.all([
+      const [series, externalId] = await Promise.all([
         this._getRequest<TmdbTvResult>("/tv/" + id),
         this._getExternalId(id, "series"),
       ]);
       if (series) {
         const year = new Date(series.first_air_date).getFullYear();
         const thumbnail = `${this.imageUrl}/t/p/w500${series.poster_path}`;
-        return {
+        const content: ContentDetail = {
           id: series.id.toString(),
           title: series.name,
           overview: series.overview,
@@ -323,8 +325,10 @@ class TMDBService extends BaseMeta {
           type: "series",
           tmdbId: series.id,
           thumbnail: thumbnail,
-          ...(imdbId && { imdbId: imdbId }),
         };
+        if (externalId?.imdb_id) content.imdbId = externalId.imdb_id;
+        if (externalId?.tvdb_id) content.tvdbId = externalId.tvdb_id;
+        return content;
       }
 
       return null;
@@ -337,14 +341,14 @@ class TMDBService extends BaseMeta {
   private async _getExternalId(
     tmdbId: string,
     type: ContentType,
-  ): Promise<string | null> {
+  ): Promise<TmdbExternalID | null> {
     try {
       const endpoint =
         type === "movie"
           ? `/movie/${tmdbId}/external_ids`
           : `/tv/${tmdbId}/external_ids`;
       const response = await this._getRequest<TmdbExternalID>(endpoint);
-      return response.imdb_id || null;
+      return response;
     } catch (error) {
       this.logger.error(`Get external ID error | ${error}`);
       return null;

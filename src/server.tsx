@@ -9,7 +9,6 @@ import {
   Stream,
   Subtitle,
 } from "@stremio-addon/sdk";
-import { Umami } from "@umami/node";
 import axios from "axios";
 import fs from "fs";
 import { Context, Hono } from "hono";
@@ -30,7 +29,8 @@ import { cache } from "./utils/cache.js";
 import { getOrgin } from "./utils/domain.js";
 import { ENV } from "./utils/env.js";
 import { Logger } from "./utils/logger.js";
-import { getSetDecryptedSubtitle } from "./utils/subtitle.js";
+import { getSetDecryptedSubtitle } from "./source/kisskh-subtitle.js";
+import { umami } from "./utils/analytic/umami.js";
 
 initMigrations();
 
@@ -46,11 +46,6 @@ app.use("*", cors());
 
 // Umami Tracking for specific paths
 if (ENV.ENABLE_ANALYTICS) {
-  const umami = new Umami();
-  umami.init({
-    websiteId: ENV.UMAMI_WEBSITE_ID,
-    hostUrl: ENV.UMAMI_URL,
-  });
   app.on(
     "GET",
     [
@@ -69,7 +64,7 @@ if (ENV.ENABLE_ANALYTICS) {
       const country = c.req.header("cf-ipcountry");
       const origin = c.req.header("origin") || c.req.header("referer");
       const userAgent = c.req.header("user-agent");
-      umami.track({
+      umami?.track({
         url: c.req.url,
         ip: ip,
         country: country,
@@ -136,26 +131,19 @@ const getLimiter = (
             { headers: { Markdown: "yes" } },
           );
         }
-        if (ENV.ENABLE_ANALYTICS) {
-          const umami = new Umami();
-          umami.init({
-            websiteId: ENV.UMAMI_WEBSITE_ID,
-            hostUrl: ENV.UMAMI_URL,
-          });
-          umami.send(
-            {
-              website: ENV.UMAMI_WEBSITE_ID,
-              name: "ratelimit",
-              data: {
-                resource: resource,
-                ip: ip,
-                wait: getRetryAfterText(parseInt(remaining)),
-                request: c.req.path,
-              },
+        umami?.send(
+          {
+            website: ENV.UMAMI_WEBSITE_ID,
+            name: "ratelimit",
+            data: {
+              resource: resource,
+              ip: ip,
+              wait: getRetryAfterText(parseInt(remaining)),
+              request: c.req.path,
             },
-            "event",
-          );
-        }
+          },
+          "event",
+        );
         let limitResponse = {};
         switch (resource) {
           case "catalog":
@@ -217,10 +205,10 @@ const getLimiter = (
   };
   return limiter(resource);
 };
-const catalogLimiter = getLimiter("catalog", 5 * 60 * 1000, 30);
-const metaLimiter = getLimiter("meta", 5 * 60 * 1000, 30);
-const streamLimiter = getLimiter("stream", 5 * 60 * 1000, 15);
-const subtitlesLimiter = getLimiter("subtitles", 5 * 60 * 1000, 15);
+const catalogLimiter = getLimiter("catalog", 10 * 60 * 1000, 20);
+const metaLimiter = getLimiter("meta", 10 * 60 * 1000, 20);
+const streamLimiter = getLimiter("stream", 10 * 60 * 1000, 10);
+const subtitlesLimiter = getLimiter("subtitles", 10 * 60 * 1000, 10);
 
 // Handle config routes
 app.get("/manifest.json", (c) => {
@@ -528,3 +516,5 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("uncaughtException", (err) => {
   logger.error(`CRASH PREVENTED ${err}`);
 });
+
+umami?.send({ website: ENV.UMAMI_WEBSITE_ID, name: "check-init" }, "identify");

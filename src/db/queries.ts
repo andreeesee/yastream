@@ -21,6 +21,7 @@ export async function upsertContent(
   contentData: ContentDetail,
   ttlMs: number,
 ) {
+  if (!db) return;
   const now = Date.now();
   const row: EContentInsert = {
     id: id,
@@ -74,6 +75,7 @@ export async function getContentByTmdb(
   tmdbId: string,
   type: ContentType,
 ): Promise<EContent | undefined> {
+  if (!db) return;
   const row = await db.query.content.findFirst({
     where: and(eq(content.tmdbId, tmdbId), eq(content.type, type)),
   });
@@ -84,6 +86,7 @@ export async function getContentByTmdb(
 export async function upsertProviderContent(
   providerContentData: Omit<EProviderContentInsert, "createdAt" | "updatedAt">,
 ) {
+  if (!db) return;
   const now = Date.now();
   const row = { ...providerContentData, createdAt: now, updatedAt: null };
 
@@ -116,6 +119,7 @@ export async function upsertProviderContent(
 export async function getProviderContentById(
   id: string,
 ): Promise<EProviderContent | undefined> {
+  if (!db) return;
   const row = await db.query.providerContent.findFirst({
     where: eq(providerContent.id, id),
   });
@@ -124,6 +128,7 @@ export async function getProviderContentById(
 
 // STREAMS
 export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
+  if (!db) return;
   const now = Date.now();
   const rows = stream.map((r) => ({ ...r, createdAt: now }));
   try {
@@ -162,6 +167,7 @@ export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
 export async function upsertSubtitles(
   subtitlesData: Omit<ESubtitleInsert, "createdAt">[],
 ) {
+  if (!db) return;
   const now = Date.now();
   const rows = subtitlesData.map((subtitle) => ({
     id: subtitle.id,
@@ -208,6 +214,7 @@ export function setKv(
   size: number,
   expiresAt: number,
 ) {
+  if (!db) return;
   db.insert(kv)
     .values({
       key,
@@ -228,6 +235,7 @@ export function setKv(
     .run();
 }
 export function getKv(key: string) {
+  if (!db) return;
   const row = db.query.kv.findFirst({
     where: eq(kv.key, key),
   });
