@@ -7,7 +7,6 @@ import { Logger } from "../../utils/logger.js";
 import { streamApiHandler } from "../controller/streams-api.js";
 import { subtitleApiHandler } from "../controller/subtitles-api.js";
 import {
-  getDescription,
   getIp,
   getRetryAfterText,
   getUserAgent,
@@ -23,7 +22,7 @@ const logger = new Logger("API");
 const getLimiter = (
   resource: string,
   windowMs: number = 10 * 60 * 1000,
-  limit: number = 0,
+  limit: number = 40,
 ) => {
   return rateLimiter({
     windowMs: windowMs,
@@ -54,7 +53,13 @@ const getLimiter = (
         },
         "event",
       );
-      return c.json({ message: `Too Many Requests, please wait ${wait}`, retryAfter: remaining }, 429);
+      return c.json(
+        {
+          message: `Too Many Requests, please wait ${wait}`,
+          retryAfter: remaining,
+        },
+        429,
+      );
     },
   });
 };
