@@ -3,7 +3,8 @@ import { AxiosRequestConfig } from "axios";
 import { URLSearchParams } from "url";
 import { axiosGet } from "../utils/axios.js";
 import { ENV } from "../utils/env.js";
-import { extractTitle, matchTitle, Search } from "../utils/fuse.js";
+import { extractTitle } from "../utils/format.js";
+import { matchTitle, Search } from "../utils/fuse.js";
 import { BaseMeta, ContentDetail } from "./meta.js";
 import { Provider } from "./provider.js";
 

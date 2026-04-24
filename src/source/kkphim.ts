@@ -15,6 +15,7 @@ import { getProxyLink } from "../utils/mediaflowproxy.js";
 import { ContentDetail } from "./meta.js";
 import { BaseProvider } from "./provider.js";
 import { matchTitle, Search } from "../utils/fuse.js";
+import { formatStreamTitle } from "../utils/format.js";
 
 interface KkphimSearchResponse {
   data: {
@@ -122,7 +123,7 @@ export class KkphimScraper extends BaseProvider {
         this.logger.log(`Stream Url | ${link}`);
         const proxyLink = getProxyLink(link);
         const info = config.info ? await parseStreamInfo(proxyLink) : undefined;
-        const formatTitle = this.formatStreamTitle(
+        const formatTitle = formatStreamTitle(
           `${name} | ${index === 0 ? "Phụ đề" : "Thuyết Minh"}`,
           year,
           season,

@@ -77,35 +77,4 @@ export abstract class BaseProvider {
   getPage(pageSize: number, skip?: number, urlNum: number = 1) {
     return skip ? Math.ceil(skip / Math.ceil(pageSize / urlNum)) + 1 : 1;
   }
-
-  formatStreamTitle(
-    title: string,
-    year?: number,
-    season?: number,
-    episode?: number,
-    info?: StreamInfo,
-  ) {
-    let titleWithYear = `${title} ${year}`;
-    if (year) {
-      titleWithYear = title.includes(year.toString()) ? title : titleWithYear;
-    }
-
-    const displayHours = info?.hours ? `${info.hours} hours` : "";
-    const displayMinutes = info?.minutes ? `${info.minutes} minutes` : "";
-    const displayTime = `${displayHours} ${displayMinutes}`.trim();
-    const displaySize = info?.size ? `${info.size.toFixed(2)} GB | ` : "";
-    const displayResolution = info?.resolution
-      ? getDisplayResolution(info?.resolution)
-      : "";
-    const displaySizeResolution = `${displaySize}${displayResolution}`.trim();
-
-    const formatTitle = season
-      ? `${title} S${season.toString().padStart(2, "0")}E${episode?.toString().padStart(2, "0")}`
-      : titleWithYear;
-    const fullTitle = [formatTitle, displayTime, displaySizeResolution]
-      .filter((item) => item.trim().length > 0)
-      .join("\n");
-    const titleInfo = info ? fullTitle : formatTitle;
-    return titleInfo;
-  }
 }

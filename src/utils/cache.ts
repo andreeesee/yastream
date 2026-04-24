@@ -1,4 +1,4 @@
-import { getKv, setKv } from "../db/queries.js";
+import { cleanKv, getKv, setKv } from "../db/queries.js";
 import { ENV } from "./env.js";
 import { Logger } from "./logger.js";
 
@@ -8,11 +8,25 @@ type CacheValue = {
   expiresAt: number;
 };
 
+const logger = new Logger("CACHE");
 class GlobalCache {
-  private logger = new Logger("CACHE");
   private cache = new Map<string, CacheValue>();
   private MAX_BYTES = ENV.CACHE_SIZE_MB * 1024 * 1024;
   private currentByteSize = 0;
+
+  constructor() {
+    setInterval(
+      () => {
+        try {
+          cleanKv();
+          logger.debug("Cleaned expired KV entries");
+        } catch (e) {
+          logger.error(`Failed to clean KV | ${e}`);
+        }
+      },
+      ENV.DATABASE_CLEAN_KV_MINUTES * 60 * 1000,
+    );
+  }
 
   /**
    * @param key Unique identifier (e.g., episode ID)
@@ -32,18 +46,18 @@ class GlobalCache {
       this.cache.size > 0
     ) {
       const oldestKey = this.cache.keys().next().value || ""; // Maps iterate in insertion order
-      this.logger.log(`Memory Limit. Evicting oldest | ${oldestKey}`);
+      logger.log(`Memory Limit. Evicting oldest | ${oldestKey}`);
       this.delete(oldestKey);
     }
     const expiresAt = Date.now() + ttlMs;
 
     // 4. Set the new item
-    this.logger.debug(`Set ${ttlMs}ms | ${key}`);
+    logger.debug(`Set ${ttlMs}ms | ${key}`);
     this.cache.set(key, { value, size: newSize, expiresAt });
     try {
       setKv(key, value, newSize, expiresAt);
     } catch (e) {
-      this.logger.error(`Failed to persist cache to DB | ${key} | ${e}`);
+      logger.error(`Failed to persist cache to DB | ${key} | ${e}`);
     }
     this.currentByteSize += newSize;
   }
@@ -51,7 +65,7 @@ class GlobalCache {
   get(key: string): any | null {
     const entry = this.cache.get(key);
     if (!entry) {
-      this.logger.debug(`Miss | ${key}`);
+      logger.debug(`Miss | ${key}`);
       const kvCache = getKv(key);
       if (kvCache && Date.now() < kvCache.expiresAt) {
         return JSON.parse(kvCache.value);
@@ -59,7 +73,7 @@ class GlobalCache {
       return null;
     }
     if (Date.now() > entry.expiresAt) {
-      this.logger.log(`Expired | ${key}`);
+      logger.log(`Expired | ${key}`);
       this.delete(key);
       return null;
     }
@@ -105,5 +119,4 @@ class GlobalCache {
   }
 }
 
-// Export a single instance to be used globally
 export const cache = new GlobalCache();

@@ -50,6 +50,7 @@ export async function parseStreamInfo(
 }
 
 async function parseMp4(url: string): Promise<StreamInfo> {
+  logger.log(`GET mp4 info | ${url}`);
   const data = await getProbeInfo(url);
   if (!data) return { size: 0 };
   const hours = getHours(data.format.duration);
@@ -76,6 +77,7 @@ function getMinutes(durationSeconds: number) {
 }
 
 async function parseDefault(url: string): Promise<StreamInfo | undefined> {
+  logger.log(`GET info | ${url}`);
   const data = await getProbeInfo(url);
   if (!data) return { size: 0 };
   const hours = getHours(data.format.duration);

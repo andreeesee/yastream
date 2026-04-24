@@ -8,7 +8,7 @@ import {
 } from "@stremio-addon/sdk";
 import pkg from "../../package.json" with { type: "json" };
 import { Provider } from "../source/provider.js";
-import { getOrgin } from "../utils/domain.js";
+import { getOrigin } from "../utils/domain.js";
 
 export interface UserConfig {
   catalogs: string[];
@@ -80,7 +80,7 @@ const baseManifest: Manifest = {
   version: pkg.version,
   catalogs: [],
   resources: [],
-  logo: `${getOrgin()}/img/yas.png`,
+  logo: `${getOrigin()}/img/yas.png`,
   idPrefixes: [
     Prefix.IMDB,
     Prefix.TMDB,

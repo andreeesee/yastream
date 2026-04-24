@@ -1,5 +1,5 @@
 import type { ContentType } from "@stremio-addon/sdk";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import type { ContentDetail } from "../source/meta.js";
 import { Logger } from "../utils/logger.js";
 import { db } from "./drizzle.js";
@@ -13,7 +13,7 @@ import {
 import { EStreamInsert, streams } from "./schema/streams.js";
 import { ESubtitleInsert, subtitles } from "./schema/subtitles.js";
 
-const logger = new Logger("QUERY");
+const logger = new Logger("DB");
 
 // CONTENT
 export async function upsertContent(
@@ -126,6 +126,16 @@ export async function getProviderContentById(
   return row;
 }
 
+export async function getProviderContent(
+  id: string,
+): Promise<EProviderContent | undefined> {
+  if (!db) return;
+  const row = await db.query.providerContent.findFirst({
+    where: eq(providerContent.id, id),
+  });
+  return row;
+}
+
 // STREAMS
 export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
   if (!db) return;
@@ -161,6 +171,38 @@ export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
       `Failed to upsert streams ${row?.providerContentId}:${row?.season}:${row?.episode} | ${e}`,
     );
   }
+}
+
+export async function getStream(id: string) {
+  if (!db) return;
+  const row = await db.query.streams.findFirst({
+    where: eq(streams.id, id),
+  });
+  return row;
+}
+export async function getStreamsJoinProvider(
+  id: string,
+  season: number,
+  episode: number,
+) {
+  if (!db) return [];
+  const seasonString = season.toString();
+  const episodeString = episode.toString();
+  const rows = await db
+    .select()
+    .from(streams)
+    .innerJoin(
+      providerContent,
+      eq(streams.providerContentId, providerContent.id),
+    )
+    .where(
+      and(
+        eq(streams.providerContentId, id),
+        eq(streams.season, seasonString),
+        eq(streams.episode, episodeString),
+      ),
+    );
+  return rows;
 }
 
 // SUBTITLES
@@ -206,6 +248,35 @@ export async function upsertSubtitles(
     );
   }
 }
+export async function getSubtitle(id: string) {
+  if (!db) return;
+  const row = db.query.subtitles.findFirst({
+    where: eq(subtitles.id, id),
+  });
+  return row;
+}
+export async function getSubtitlesJoinProvider(
+  id: string,
+  season: number,
+  episode: number,
+) {
+  if (!db) return;
+  const row = await db
+    .select()
+    .from(subtitles)
+    .innerJoin(
+      providerContent,
+      eq(subtitles.providerContentId, providerContent.id),
+    )
+    .where(
+      and(
+        eq(subtitles.providerContentId, id),
+        eq(subtitles.season, season.toString()),
+        eq(subtitles.episode, episode.toString()),
+      ),
+    );
+  return row;
+}
 
 // KV
 export function setKv(
@@ -240,4 +311,9 @@ export function getKv(key: string) {
     where: eq(kv.key, key),
   });
   return row.sync();
+}
+
+export function cleanKv() {
+  if (!db) return;
+  db.delete(kv).where(lt(kv.expiresAt, Date.now())).run();
 }

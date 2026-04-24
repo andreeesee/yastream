@@ -1,3 +1,10 @@
+# v0.7.0 2026-04-24
+
+- Add api for get streams and subtitles from db
+- Add database kv cleaning periodly with DATABASE_CLEAN_KV_MINUTES
+- Add unique to subtitle contraint
+- Restructure source code (service, router, controller)
+
 # v0.6.1 2026-04-23
 
 - Make database optional

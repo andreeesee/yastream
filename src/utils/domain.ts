@@ -9,7 +9,7 @@ export function getHost() {
   }
 }
 
-export function getOrgin() {
+export function getOrigin() {
   const domain = ENV.DOMAIN;
   if (domain === "localhost") {
     return `http://${getHost()}`;

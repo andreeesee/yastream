@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX `uq_subtitles_url` ON `subtitles` (`url`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_subtitles_provider_season_episode_lang` ON `subtitles` (`provider_content_id`,`season`,`episode`,`lang`);

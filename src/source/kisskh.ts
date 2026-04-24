@@ -20,10 +20,16 @@ import {
 import { ESubtitleInsert } from "../db/schema/subtitles.js";
 import { COMMON_TTL } from "../db/sqlite.js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
+import StreamService from "../service/resource/stream-service.js";
+import SubtitleService from "../service/resource/subtitle-service.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
+import { RATE_LIMIT_NAME } from "../utils/constant.js";
+import { getOrigin } from "../utils/domain.js";
 import { ENV } from "../utils/env.js";
-import { extractTitle, matchTitle } from "../utils/fuse.js";
+import { RateLimitError } from "../utils/error.js";
+import { formatStreamTitle } from "../utils/format.js";
+import { matchTitle } from "../utils/fuse.js";
 import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getSetDecryptedSubtitle } from "./kisskh-subtitle.js";
@@ -401,9 +407,20 @@ class KissKHScraperr extends BaseProvider {
     const { title, type, year, season, episode, id, kisskhId, altTitle } =
       content;
     try {
-      const streamKey = `streams:${type}:${this.name}:${id}:${season}:${episode}`;
+      const streamKey = `streams:${type}:${this.name}:${id}:${season}:${episode}:${config.info}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
+      const savedStreams = await StreamService.getStreamsFromDb(
+        `${this.name}:${id}`,
+        season ?? 1,
+        episode ?? 1,
+        this.displayName,
+        config,
+      );
+      if (savedStreams.length > 0) {
+        cache.set(streamKey, savedStreams, COMMON_TTL.stream);
+        return savedStreams;
+      }
       if (!kisskhId) {
         const searchResult = await this.searchContent(
           title,
@@ -426,7 +443,8 @@ class KissKHScraperr extends BaseProvider {
           content,
           config,
         );
-        if (streams) cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
+        if (streams.length > 0)
+          cache.set(streamKey, streams, COMMON_TTL.stream);
         return streams;
       } else {
         const streams = await this.generateStreamsAndSubtitles(
@@ -436,10 +454,11 @@ class KissKHScraperr extends BaseProvider {
           config,
         );
         if (streams.length > 0)
-          cache.set(streamKey, streams, 1 * 60 * 60 * 1000);
+          cache.set(streamKey, streams, COMMON_TTL.stream);
         return streams;
       }
     } catch (error: any) {
+      if (error instanceof RateLimitError) return [{ name: RATE_LIMIT_NAME }];
       this.logger.error(`${error.message}`);
       return [];
     }
@@ -449,6 +468,15 @@ class KissKHScraperr extends BaseProvider {
     const subtitleKey = `subtitles:${content.type}:${this.name}:${content.id}:${content.season}:${content.episode}`;
     let cacheSubtitles = cache.get(subtitleKey);
     if (cacheSubtitles) return cacheSubtitles;
+    const savedSubtitles = await SubtitleService.getSubtitlesFromDb(
+      `${this.name}:${content.id}`,
+      content.season ?? 1,
+      content.episode ?? 1,
+    );
+    if (savedSubtitles.length > 0) {
+      cache.set(subtitleKey, savedSubtitles, COMMON_TTL.stream);
+      return savedSubtitles;
+    }
     const search = await this.searchContent(
       content.title,
       content.type,
@@ -499,6 +527,9 @@ class KissKHScraperr extends BaseProvider {
     const stream = await this._getStream(episodeId, token);
     if (!stream) return [];
     if (!stream.Video) return [];
+    // Handle rate limit
+    if (stream.Video.includes(RATE_LIMIT_NAME))
+      throw new RateLimitError(stream.Video);
     const url = this._fixUrl(stream.Video);
     const subtitleKey = `subtitles:${type}:${this.name}:${id}:${season}:${episode}`;
     // Handle subtitles
@@ -506,7 +537,7 @@ class KissKHScraperr extends BaseProvider {
     if (subtitles) cache.set(subtitleKey, subtitles);
     else {
       subtitles = await this._getSubtitles(episodeId);
-      if (subtitles) cache.set(subtitleKey, subtitles);
+      if (subtitles.length > 0) cache.set(subtitleKey, subtitles);
     }
     if (subtitles) {
       const subtitleRows: Omit<ESubtitleInsert, "createdAt">[] =
@@ -526,13 +557,7 @@ class KissKHScraperr extends BaseProvider {
       upsertSubtitles(subtitleRows);
     }
     const info = config.info ? await parseStreamInfo(url) : undefined;
-    const formatTitle = this.formatStreamTitle(
-      title,
-      year,
-      season,
-      episode,
-      info,
-    );
+    const formatTitle = formatStreamTitle(title, year, season, episode, info);
     const streamDatas: Stream[] = [
       {
         url: url,
@@ -628,26 +653,6 @@ class KissKHScraperr extends BaseProvider {
       headers: this.headers,
     });
     if (episodesData) {
-      // // Save provider content
-      // const providerContentId = `${this.name}:${kisskhId}`;
-      // const existContent = await getProviderContentById(providerContentId);
-      // if (!existContent) {
-      //   const providerContent: Omit<
-      //     EProviderContentInsert,
-      //     "createdAt" | "updatedAt"
-      //   > = {
-      //     id: `${this.name}:${episodesData.id}`,
-      //     contentId: null,
-      //     provider: this.name,
-      //     externalId: episodesData.id,
-      //     image: episodesData.thumbnail,
-      //     ttl: COMMON_TTL.content,
-      //     type: type,
-      //     title: episodesData.title,
-      //     year: new Date(episodesData.releaseDate).getFullYear(),
-      //   };
-      //   upsertProviderContent(providerContent);
-      // }
       return episodesData;
     } else throw new Error(`Not found detail from id | ${kisskhId}`);
   }
@@ -677,10 +682,16 @@ class KissKHScraperr extends BaseProvider {
   private async _getStream(episodeId: string, token: string) {
     const url = this.getEpisodeUrl().replace("{id}", episodeId) + token;
     this.logger.log(`GET stream | ${url}`);
-    const stream = await axiosGet<StreamResponse>(url, { timeout: 15000 });
-    if (!stream) return null;
-    this.logger.log(`Stream Url | ${stream.Video}`);
-    return stream;
+    try {
+      const stream = await axiosGet<StreamResponse>(url, { timeout: 15000 });
+      if (!stream) return null;
+      this.logger.log(`Stream Url | ${stream.Video}`);
+      return stream;
+    } catch (error) {
+      this.logger.error(`Fail to get stream | ${error}`);
+      if (error instanceof RateLimitError) return { Video: RATE_LIMIT_NAME };
+      return null;
+    }
   }
 
   private async _getSubtitles(episodeId: string): Promise<Subtitle[]> {
@@ -717,14 +728,7 @@ class KissKHScraperr extends BaseProvider {
   }
 
   private _createSubtitleUrl(originalUrl: string): string {
-    const domain = ENV.DOMAIN;
-    const port = ENV.PORT;
-    const protocol = domain === "localhost" ? "http" : "https";
-    const url =
-      domain === "localhost"
-        ? `${protocol}://${domain}:${port}`
-        : `${protocol}://${domain}`;
-    return `${url}/subtitle/${originalUrl}`;
+    return `${getOrigin()}/subtitle/${originalUrl}`;
   }
 
   private _fixUrl(url: string): string {

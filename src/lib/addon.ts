@@ -11,9 +11,6 @@ import {
   Subtitle,
   SubtitlesHandlerArgs,
 } from "@stremio-addon/sdk";
-import KissKHScraper from "../source/kisskh.js";
-// import TMDBService from "../source/tmdb.js";
-
 import {
   getProviderContentById,
   upsertProviderContent,
@@ -21,6 +18,7 @@ import {
 import { EProviderContent } from "../db/schema/provider_content.js";
 import { COMMON_TTL } from "../db/sqlite.js";
 import { IDramaScraper } from "../source/idrama.js";
+import KissKHScraper from "../source/kisskh.js";
 import { KkphimScraper } from "../source/kkphim.js";
 import { ContentDetail } from "../source/meta.js";
 import { OnetouchtvScrapper } from "../source/onetouchtv.js";
@@ -29,9 +27,11 @@ import { BaseProvider, Provider } from "../source/provider.js";
 import { tmdb } from "../source/tmdb.js";
 import { tvdb } from "../source/tvdb.js";
 import { cache } from "../utils/cache.js";
-import { extractTitle } from "../utils/fuse.js";
+import { RATE_LIMIT_NAME } from "../utils/constant.js";
+import { extractTitle } from "../utils/format.js";
 import { Logger } from "../utils/logger.js";
 import { defaultConfig, Prefix, UserConfig } from "./manifest.js";
+
 const kisskh = new KissKHScraper(Provider.KISSKH);
 const idrama = new IDramaScraper(Provider.IDRAMA);
 const kkphim = new KkphimScraper(Provider.KKPHIM);
@@ -395,10 +395,18 @@ export async function buildStreamHandler(
         }),
       )
     ).flat();
-    const streamResults: { streams: Stream[] } & Cache = { streams: streams };
-    if (streams.length > 0) {
+    const hasRateLimit = streams.some((stream) =>
+      stream.name?.includes(`${RATE_LIMIT_NAME}`),
+    );
+    const returnStreams = streams.filter(
+      (stream) => !stream.name?.includes(`${RATE_LIMIT_NAME}`),
+    );
+    const streamResults: { streams: Stream[] } & Cache = {
+      streams: returnStreams,
+    };
+    if (returnStreams.length > 0 && !hasRateLimit) {
       streamResults.cacheMaxAge = 1 * 60 * 60;
-      cache.set(streamKey, streamResults, 1 * 60 * 60 * 1000);
+      cache.set(streamKey, streamResults, COMMON_TTL.stream);
     }
     return streamResults;
   } catch (error) {

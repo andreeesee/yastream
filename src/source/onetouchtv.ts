@@ -20,9 +20,11 @@ import { EProviderContentInsert } from "../db/schema/provider_content.js";
 import { EStreamInsert } from "../db/schema/streams.js";
 import { COMMON_TTL } from "../db/sqlite.js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
+import StreamService from "../service/resource/stream-service.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
-import { extractTitle, matchTitle } from "../utils/fuse.js";
+import { extractTitle, formatStreamTitle } from "../utils/format.js";
+import { matchTitle } from "../utils/fuse.js";
 import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { ContentDetail } from "./meta.js";
@@ -370,9 +372,20 @@ export class OnetouchtvScrapper extends BaseProvider {
   ): Promise<Stream[]> {
     try {
       const { title, type, year, season, episode, onetouchtvId, id } = content;
-      const streamKey = `streams:${type}:${this.name}:${id}:${season}:${episode}`;
+      const streamKey = `streams:${type}:${this.name}:${id}:${season}:${episode}:${config.info}`;
       const cacheStreams = cache.get(streamKey);
       if (cacheStreams) return cacheStreams;
+      const savedStreams = await StreamService.getStreamsFromDb(
+        `${this.name}:${id}`,
+        season ?? 1,
+        episode ?? 1,
+        this.displayName,
+        config,
+      );
+      if (savedStreams.length > 0) {
+        cache.set(streamKey, savedStreams, COMMON_TTL.stream);
+        return savedStreams;
+      }
       let detail = null;
       if (onetouchtvId) {
         detail = await this.getDetail(onetouchtvId);
@@ -397,7 +410,7 @@ export class OnetouchtvScrapper extends BaseProvider {
           const info = config.info
             ? await parseStreamInfo(source.url)
             : undefined;
-          const formatTitle = this.formatStreamTitle(
+          const formatTitle = formatStreamTitle(
             detail.result.title,
             year,
             season,

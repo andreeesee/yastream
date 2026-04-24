@@ -61,3 +61,5 @@ export function decryptString<T>(input: string): T {
     throw new Error("Decryption failed");
   }
 }
+
+// console.log(decryptString("K5@AeyvDate8WuIvULCet6FdMapTy2YSbhamEMeZotrIjkhdK56tcBOOktirKulSmCLcSggN7plq0g4i1A@W7A=="));

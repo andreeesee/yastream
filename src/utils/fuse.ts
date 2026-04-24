@@ -2,6 +2,7 @@ import Fuse, { FuseResult, IFuseOptions } from "fuse.js";
 import { token_sort_ratio } from "fuzzball";
 import { Logger } from "./logger.js";
 import { ENV } from "./env.js";
+import { normalize } from "./format.js";
 
 interface SearchItem<T> {
   original: T;
@@ -105,40 +106,4 @@ function createSearchList(title: string, season?: number, year?: number) {
     );
   }
   return searchTitles;
-}
-
-export const normalize = (str: string) => {
-  return str
-    .toLowerCase()
-    .replace(/(\d+)(st|nd|rd|th)/g, "$1") // fix 2nd season -> 2 season
-    .replace(/[\u2018\u2019\u00b4\u201a]/g, "'") // fix quotes
-    .replace(/[^a-z0-9\s']/g, " ") // only character, space and quote
-    .replace(/\s+/g, " ") // no extra spaces
-    .trim();
-};
-
-const YEAR_SYNTAX_REGEX = /\s*\((\d{4})\)\s*/g;
-
-export function extractTitle(rawTitle: string) {
-  let year: number | undefined;
-  const cleanTitle = rawTitle
-    .replace(YEAR_SYNTAX_REGEX, (match, yearGroup) => {
-      year = parseInt(yearGroup);
-      return ""; // Remove the syntax from the title
-    })
-    .trim();
-  const { title, season } = extractSeason(cleanTitle);
-  return { title: title, year: year, season: season };
-}
-
-export function extractSeason(rawTitle: string) {
-  // title: Heart Signal Season 5
-  let season: number | undefined;
-  const cleanTitle = rawTitle
-    .replace(/Season\s+(\d+)/, (match, seasonGroup) => {
-      season = parseInt(seasonGroup);
-      return "";
-    })
-    .trim();
-  return { title: cleanTitle, season: season };
 }

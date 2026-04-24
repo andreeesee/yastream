@@ -1,8 +1,8 @@
 services:
   yastream:
-    image: tamthai/yastream:dev # change tag to dev for nightly build
+    image: tamthai/yastream:latest # change tag to dev for nightly build
     container_name: yastream
     ports:
-      - 55915:55915
+      - 55913:55913
     env_file: .env
     restart: unless-stopped

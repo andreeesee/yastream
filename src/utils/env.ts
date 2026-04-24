@@ -51,6 +51,7 @@ const envSchema = z.object({
 
   // Database (optional - only used when DATABASE_URL is set)
   DATABASE_URL: z.string().optional(),
+  DATABASE_CLEAN_KV_MINUTES: z.coerce.number().default(60),
 
   // Kisskh domains
   KISSKH_URLS: z

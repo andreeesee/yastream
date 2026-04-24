@@ -4,6 +4,7 @@ import https from "https";
 import { decryptString } from "../source/onetouchtv-crypto.js";
 import { cache } from "./cache.js";
 import { ENV } from "./env.js";
+import { RateLimitError } from "./error.js";
 import { Logger } from "./logger.js";
 
 // process.setMaxListeners(20);
@@ -80,21 +81,23 @@ export async function axiosGet<T>(
   const http = getClient(url);
   let attempt = 0;
   let timeout = 0;
+  let isRateLimit = false;
   while (true) {
     attempt++;
     try {
-      const data = (await http.get(url, { timeout: 10000, ...config })).data;
+      const response = await http.get(url, { timeout: 10000, ...config });
+      const data = response.data;
       cache.set(urlKey, data, cacheMs);
       return data as T;
     } catch (error: AxiosError | unknown) {
       lastError = error;
-      const status = error instanceof AxiosError && error.response?.status;
-      let isRateLimit = status === HttpStatusCode.TooManyRequests;
+      const errorStatus = error instanceof AxiosError && error.response?.status;
+      isRateLimit = errorStatus === HttpStatusCode.TooManyRequests;
       if (http === onetouchtvClient) {
         logger.log(
           `Error ${error instanceof AxiosError && error.response?.data}`,
         );
-        isRateLimit = isRateLimit || status === HttpStatusCode.NotFound;
+        isRateLimit = isRateLimit || errorStatus === HttpStatusCode.NotFound;
       }
       if (!isRateLimit) break;
       const delay = ENV.RETRY_DELAY_MS * attempt;
@@ -109,6 +112,9 @@ export async function axiosGet<T>(
     }
   }
   logger.error(`Fail GET | ${url} ${lastError}`);
+  if (isRateLimit) {
+    throw new RateLimitError(url);
+  }
   return null;
 }
 
