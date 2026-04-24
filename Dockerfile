@@ -1,10 +1,7 @@
-FROM node:24-slim AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 RUN npm install -g pnpm
-
-# Install build tools for better-sqlite3
-RUN apt update && apt install -y python3 make g++
 
 COPY pnpm-lock.yaml package.json ./
 RUN pnpm install --frozen-lockfile
@@ -13,10 +10,10 @@ COPY . .
 RUN pnpm run build
 RUN pnpm prune --prod
 
-FROM node:24-slim AS production
+FROM node:24-alpine AS production
 WORKDIR /app
 
-RUN apt update && apt install -y ffmpeg
+RUN apk add ffmpeg
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/CHANGELOG.md ./CHANGELOG.md
