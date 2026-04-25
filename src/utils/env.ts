@@ -24,7 +24,7 @@ const envSchema = z.object({
   // Retry configuration
   RETRY_ATTEMPTS: z.coerce.number().default(4),
   RETRY_TIMEOUT_MS: z.coerce.number().default(15000),
-  RETRY_DELAY_MS: z.coerce.number().default(1500),
+  RETRY_DELAY_MS: z.coerce.number().default(4000),
   RETRY_JITTER_MS: z.coerce.number().default(500),
   LOG_LEVEL: z
     .enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "NONE"])

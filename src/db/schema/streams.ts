@@ -15,12 +15,16 @@ export const streams = sqliteTable(
     episode: text("episode"),
     url: text("url").notNull(),
     playlist: text("playlist"),
+    hash: text("hash"),
     resolution: text("resolution"),
+    size: text("size"),
+    duration: text("duration"),
     createdAt: integer("created_at").notNull(),
     ttl: integer("ttl"),
   },
   (table) => [
     unique("uq_streams_url").on(table.url),
+    unique("uq_streams_hash").on(table.hash),
     index("idx_streams_provider_id").on(table.providerContentId),
   ],
 );

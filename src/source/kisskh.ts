@@ -28,7 +28,7 @@ import { RATE_LIMIT_NAME } from "../utils/constant.js";
 import { getOrigin } from "../utils/domain.js";
 import { ENV } from "../utils/env.js";
 import { RateLimitError } from "../utils/error.js";
-import { formatStreamTitle } from "../utils/format.js";
+import { cleanUrl, formatStreamTitle } from "../utils/format.js";
 import { matchTitle } from "../utils/fuse.js";
 import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
@@ -37,6 +37,8 @@ import { ContentDetail } from "./meta.js";
 import { getPosterUrl, PosterParam } from "./poster/poster.js";
 import { BaseProvider } from "./provider.js";
 import { tmdb } from "./tmdb.js";
+import { hashSHA256 } from "../utils/crypto.js";
+import { EStreamInsert } from "../db/schema/streams.js";
 
 export interface SearchResult {
   id: number;
@@ -570,23 +572,33 @@ class KissKHScraperr extends BaseProvider {
         },
       },
     ];
-    const playlist = url.includes("m3u8") ? await axiosGet<string>(url) : null;
-    upsertStream([
-      {
-        id: uuidv7(),
-        providerContentId: `${this.name}:${kisskhId}`,
-        provider: this.name,
-        externalId: kisskhId.toString(),
-        season: season?.toString() ?? "1",
-        episode: episode?.toString() ?? "1",
-        url: url,
-        resolution: info?.resolution
-          ? getDisplayResolution(info.resolution)
-          : null,
-        playlist: playlist,
-        ttl: COMMON_TTL.stream,
-      },
-    ]);
+    const streamRow: Omit<EStreamInsert, "createdAt"> = {
+      id: uuidv7(),
+      providerContentId: `${this.name}:${kisskhId}`,
+      provider: this.name,
+      externalId: kisskhId.toString(),
+      season: season?.toString() ?? "1",
+      episode: episode?.toString() ?? "1",
+      url: cleanUrl(url),
+      ttl: COMMON_TTL.stream,
+    };
+    if (info?.resolution) {
+      streamRow.resolution = `${info.resolution.width}x${info.resolution.height}`;
+    }
+    if (info?.size) streamRow.size = info.size.toFixed(2).toString();
+    if (info?.hours && info?.minutes) {
+      streamRow.duration = (info.hours * 60 + info.minutes).toString();
+    }
+    if (url.includes("m3u8")) {
+      const playlist = await axiosGet<string>(url);
+      if (playlist) {
+        streamRow.playlist = playlist;
+        streamRow.hash = hashSHA256(playlist);
+        upsertStream([streamRow]);
+      }
+    } else {
+      upsertStream([streamRow]);
+    }
     return streamDatas;
   }
 

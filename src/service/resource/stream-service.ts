@@ -4,7 +4,8 @@ import { API, STREAMS } from "../../utils/constant.js";
 import { getOrigin } from "../../utils/domain.js";
 import { UserConfig } from "../../lib/manifest.js";
 import { formatStreamTitle } from "../../utils/format.js";
-import { parseStreamInfo } from "../../utils/info.js";
+import { parseStreamInfo, StreamInfo } from "../../utils/info.js";
+import { he } from "zod/locales";
 
 class StreamService {
   static async getStream(id: string) {
@@ -30,7 +31,29 @@ class StreamService {
           if (stream.streams.playlist) {
             url = StreamService.getStreamUrl(stream.streams.id);
           }
-          const info = config.info ? await parseStreamInfo(url) : undefined;
+          let info: StreamInfo = {
+            size: 0,
+          };
+          if (config.info) {
+            info = (await parseStreamInfo(url)) || info;
+          } else {
+            if (stream.streams.size)
+              info.size = parseFloat(stream.streams.size);
+            if (stream.streams.duration) {
+              info.hours = parseInt(stream.streams.duration) / 60;
+              info.minutes = parseInt(stream.streams.duration) % 60;
+            }
+            if (stream.streams.resolution) {
+              const width = stream.streams.resolution.split("x")[0];
+              const height = stream.streams.resolution.split("x")[1];
+              if (width && height) {
+                info.resolution = {
+                  width: parseInt(width),
+                  height: parseInt(height),
+                };
+              }
+            }
+          }
           const formatTitle = formatStreamTitle(
             stream.provider_content.title,
             stream.provider_content.year,
@@ -38,6 +61,7 @@ class StreamService {
             episode,
             info,
           );
+          const filename = `${formatTitle}-${stream.provider_content.provider}`;
           return {
             url: url,
             name: displayName,
@@ -45,7 +69,7 @@ class StreamService {
             behaviorHints: {
               notWebReady: true,
               bingeGroup: `${displayName}-${index}`,
-              filename: `${formatTitle}-${stream.provider_content.provider}`,
+              filename: filename,
             },
           };
         }),

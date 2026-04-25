@@ -23,7 +23,7 @@ import { Prefix, UserConfig } from "../lib/manifest.js";
 import StreamService from "../service/resource/stream-service.js";
 import { axiosGet } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
-import { extractTitle, formatStreamTitle } from "../utils/format.js";
+import { cleanUrl, extractTitle, formatStreamTitle } from "../utils/format.js";
 import { matchTitle } from "../utils/fuse.js";
 import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
@@ -31,6 +31,7 @@ import { ContentDetail } from "./meta.js";
 import { getPosterUrl, PosterParam } from "./poster/poster.js";
 import { BaseProvider } from "./provider.js";
 import { tmdb } from "./tmdb.js";
+import { hashSHA256 } from "../utils/crypto.js";
 
 interface OnetouchtvTop {
   result: {
@@ -82,6 +83,7 @@ interface OnetouchtvEpisodePreview {
 }
 interface OnetouchtvSource {
   type: string;
+  headers: Record<string, string>;
   contentId: string;
   id: string;
   name: string;
@@ -427,9 +429,10 @@ export class OnetouchtvScrapper extends BaseProvider {
               filename: `${formatTitle}-${this.name}`,
             },
           };
-          const playlist = source.url.includes("m3u8")
-            ? await axiosGet<string>(source.url)
-            : null;
+          // if (source.headers && stream.behaviorHints?.proxyHeaders) {
+          //   stream.behaviorHints.proxyHeaders.request = source.headers;
+          // }
+          // Save stream to db
           const streamRow: Omit<EStreamInsert, "createdAt"> = {
             id: uuidv7(),
             providerContentId: `${this.name}:${detail.result.id}`,
@@ -437,14 +440,26 @@ export class OnetouchtvScrapper extends BaseProvider {
             externalId: episodeId.toString(),
             season: season?.toString() ?? "1",
             episode: episode?.toString() ?? "1",
-            url: source.url,
-            resolution: info?.resolution
-              ? getDisplayResolution(info.resolution)
-              : null,
-            playlist: playlist,
+            url: cleanUrl(source.url),
             ttl: COMMON_TTL.stream,
           };
-          streamRows.push(streamRow);
+          if (info?.resolution) {
+            streamRow.resolution = `${info.resolution.width}x${info.resolution.height}`;
+          }
+          if (info?.size) streamRow.size = info.size.toFixed(2).toString();
+          if (info?.hours && info?.minutes) {
+            streamRow.duration = (info.hours * 60 + info.minutes).toString();
+          }
+          if (source.url.includes("m3u8")) {
+            const playlist = await axiosGet<string>(source.url);
+            if (playlist) {
+              streamRow.playlist = playlist;
+              streamRow.hash = hashSHA256(playlist);
+              streamRows.push(streamRow);
+            }
+          } else {
+            streamRows.push(streamRow);
+          }
           return stream;
         }),
       );
@@ -560,7 +575,6 @@ export class OnetouchtvScrapper extends BaseProvider {
     this.logger.log(`GET episode detail | ${url}`);
     const detailData = await axiosGet<OnetouchtvEpisode>(url);
     if (!detailData) throw new Error("Failed to get episode detail");
-    // const detailData: OnetouchtvEpisode = decryptString(encryptedDetail);
     return detailData;
   }
 }

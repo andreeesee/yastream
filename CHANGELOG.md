@@ -4,6 +4,8 @@
 - Add database kv cleaning periodly with DATABASE_CLEAN_KV_MINUTES
 - Add unique to subtitle contraint
 - Restructure source code (service, router, controller)
+- Store resolution, size and duration to streams db
+- Fix save playlist to db, only store unique playlist
 
 # v0.6.1 2026-04-23
 

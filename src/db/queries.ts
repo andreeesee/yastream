@@ -157,7 +157,10 @@ export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
           episode: sql.raw(`excluded.${streams.episode.name}`),
           url: sql.raw(`excluded.${streams.url.name}`),
           playlist: sql.raw(`excluded.${streams.playlist.name}`),
+          hash: sql.raw(`excluded.${streams.hash.name}`),
           resolution: sql.raw(`excluded.${streams.resolution.name}`),
+          size: sql.raw(`excluded.${streams.size.name}`),
+          duration: sql.raw(`excluded.${streams.duration.name}`),
           ttl: sql.raw(`excluded.${streams.ttl.name}`),
         },
       });

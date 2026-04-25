@@ -5,7 +5,7 @@ import { Logger } from "./logger.js";
 const logger = new Logger("INFO");
 
 export interface StreamInfo {
-  size: number;
+  size?: number;
   hours?: number;
   minutes?: number;
   resolution?: Resolution;
@@ -41,7 +41,7 @@ export async function parseStreamInfo(
     } else if (isMp4) {
       info = await parseMp4(url);
     } else {
-      info = await parseDefault(url);
+      info = await parseMp4(url); // default work for both
     }
   } catch (error) {
     logger.error(`Fail to parse stream info | ${error}`);
@@ -60,12 +60,13 @@ async function parseMp4(url: string): Promise<StreamInfo> {
     height: data.streams[0]?.height!,
   };
   let GB = data.format.size;
-  return {
-    size: GB,
+  const info: StreamInfo = {
     hours: hours,
     minutes: minutes,
     resolution: resolution,
   };
+  if (GB > 0) info.size = GB;
+  return info;
 }
 
 function getHours(durationSeconds: number) {
@@ -74,25 +75,6 @@ function getHours(durationSeconds: number) {
 
 function getMinutes(durationSeconds: number) {
   return Math.floor((durationSeconds / 60) % 60);
-}
-
-async function parseDefault(url: string): Promise<StreamInfo | undefined> {
-  logger.log(`GET info | ${url}`);
-  const data = await getProbeInfo(url);
-  if (!data) return { size: 0 };
-  const hours = getHours(data.format.duration);
-  const minutes = getMinutes(data.format.duration);
-  const resolution: Resolution = {
-    width: data.streams[0]?.width!,
-    height: data.streams[0]?.height!,
-  };
-  let GB = data.format.size;
-  return {
-    size: GB,
-    hours: hours,
-    minutes: minutes,
-    resolution: resolution,
-  };
 }
 
 async function parseM3u8(url: string): Promise<StreamInfo | undefined> {
@@ -149,7 +131,7 @@ async function parseM3u8(url: string): Promise<StreamInfo | undefined> {
       minutes: minutes,
     };
   }
-  if (gb === 0) {
+  if (gb === 0 && !Number.isNaN(probeResult.format.size)) {
     gb = probeResult.format.size;
   }
   const resolution: Resolution = {
@@ -159,12 +141,13 @@ async function parseM3u8(url: string): Promise<StreamInfo | undefined> {
   logger.log(
     `${hours} hours ${minutes} minutes, ${gb.toFixed(2)} GB, ${resolution.width} x ${resolution.height}`,
   );
-  return {
-    size: gb,
+  const info: StreamInfo = {
     hours: hours,
     minutes: minutes,
     resolution: resolution,
   };
+  if (gb > 0) info.size = gb;
+  return info;
 }
 
 function isValidSegmentUrl(url: string) {
@@ -198,7 +181,7 @@ export function getDisplayResolution(resolution: Resolution) {
   const height = resolution.height;
   if (width >= 3840 || height >= 2160) return "4K";
   if (width >= 1920 || height >= 800) return "1080p";
-  if (width >= 1280 || height >= 534) return "720p"; // Your 640px height falls here
+  if (width >= 1280 || height >= 534) return "720p";
   if (width >= 854 || height >= 480) return "480p";
   return "SD";
 }

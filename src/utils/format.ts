@@ -65,3 +65,12 @@ export const normalize = (str: string) => {
     .replace(/\s+/g, " ") // no extra spaces
     .trim();
 };
+
+const REQUIRED_QUERY_URLS = ["mixdrop", "dramacool", "dood", "masuketin"];
+export function cleanUrl(url: string) {
+  // remove query string
+  if (REQUIRED_QUERY_URLS.some((queryUrl) => url.includes(queryUrl))) {
+    return url;
+  }
+  return url.replace(/\?.*$/, "");
+}
