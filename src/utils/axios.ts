@@ -10,17 +10,17 @@ import { Logger } from "./logger.js";
 // process.setMaxListeners(20);
 EventEmitter.defaultMaxListeners = 23;
 
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 20,
+  maxFreeSockets: 10,
+  timeout: 11000,
+});
 function createClient(
   // maxRequests: number,
   // duration: string = "1s",
   headers: Record<string, string> = {},
 ) {
-  const httpsAgent = new https.Agent({
-    keepAlive: true,
-    maxSockets: 20,
-    maxFreeSockets: 10,
-    timeout: 11000,
-  });
   const instance = axios.create({ httpsAgent, headers });
   return instance;
   // when need to queue requests to avoid rate limit, use this:
@@ -68,6 +68,64 @@ function getClient(url: string) {
   return defaultClient;
 }
 
+interface UrlMetrics {
+  success: number;
+  fail: number;
+  lastUsed: number;
+}
+
+const kisskhMetrics = new Map<string, UrlMetrics>();
+
+function selectKisskhUrl(): string {
+  for (const url of ENV.KISSKH_URLS) {
+    const metrics = kisskhMetrics.get(url);
+    if (!metrics || metrics.fail === 0) {
+      return url;
+    }
+  }
+  const sorted = ENV.KISSKH_URLS.map((url) => ({
+    url,
+    metrics: kisskhMetrics.get(url),
+  })).sort((a, b) => {
+    const aScore =
+      ((a.metrics?.success ?? 0) + 1) / ((a.metrics?.fail ?? 0) + 1);
+    const bScore =
+      ((b.metrics?.success ?? 0) + 1) / ((b.metrics?.fail ?? 0) + 1);
+    return bScore - aScore;
+  });
+  return sorted[0]?.url ?? "https://kisskh.co";
+}
+
+export function getKisskhMetrics(): Map<string, UrlMetrics> {
+  return kisskhMetrics;
+}
+
+export function getKisskhBaseUrl(): string {
+  return selectKisskhUrl();
+}
+
+export function markKisskhUrlSuccess(url: string): void {
+  const metrics = kisskhMetrics.get(url) ?? {
+    success: 0,
+    fail: 0,
+    lastUsed: 0,
+  };
+  metrics.success++;
+  metrics.lastUsed = Date.now();
+  kisskhMetrics.set(url, metrics);
+}
+
+export function markKisskhUrlFail(url: string): void {
+  const metrics = kisskhMetrics.get(url) ?? {
+    success: 0,
+    fail: 0,
+    lastUsed: 0,
+  };
+  metrics.fail++;
+  metrics.lastUsed = Date.now();
+  kisskhMetrics.set(url, metrics);
+}
+
 const logger = new Logger("AXIOS");
 export async function axiosGet<T>(
   url: string,
@@ -88,6 +146,9 @@ export async function axiosGet<T>(
       const response = await http.get(url, { timeout: 10000, ...config });
       const data = response.data;
       cache.set(urlKey, data, cacheMs);
+      if (http === kisskhClient) {
+        markKisskhUrlSuccess(url);
+      }
       return data as T;
     } catch (error: AxiosError | unknown) {
       lastError = error;
@@ -100,6 +161,9 @@ export async function axiosGet<T>(
         isRateLimit = isRateLimit || errorStatus === HttpStatusCode.NotFound;
       }
       if (!isRateLimit) break;
+      if (http === kisskhClient) {
+        markKisskhUrlFail(url);
+      }
       const delay = ENV.RETRY_DELAY_MS * attempt;
       logger.log(`Retry ${attempt} | ${url}`);
       const retryAfter = delay + Math.random() * ENV.RETRY_JITTER_MS;
