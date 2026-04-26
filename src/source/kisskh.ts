@@ -17,28 +17,28 @@ import {
   upsertStream,
   upsertSubtitles,
 } from "../db/queries.js";
+import { EStreamInsert } from "../db/schema/streams.js";
 import { ESubtitleInsert } from "../db/schema/subtitles.js";
 import { COMMON_TTL } from "../db/sqlite.js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import StreamService from "../service/resource/stream-service.js";
 import SubtitleService from "../service/resource/subtitle-service.js";
-import { axiosGet } from "../utils/axios.js";
+import { axiosGet, getKisskhBaseUrl } from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
 import { RATE_LIMIT_NAME } from "../utils/constant.js";
+import { hashSHA256 } from "../utils/crypto.js";
 import { getOrigin } from "../utils/domain.js";
 import { ENV } from "../utils/env.js";
 import { RateLimitError } from "../utils/error.js";
 import { cleanUrl, formatStreamTitle } from "../utils/format.js";
 import { matchTitle } from "../utils/fuse.js";
-import { getDisplayResolution, parseStreamInfo } from "../utils/info.js";
+import { parseStreamInfo } from "../utils/info.js";
 import { CountryCode, iso639FromCountryCode } from "../utils/language.js";
 import { getSetDecryptedSubtitle } from "./kisskh-subtitle.js";
 import { ContentDetail } from "./meta.js";
 import { getPosterUrl, PosterParam } from "./poster/poster.js";
 import { BaseProvider } from "./provider.js";
 import { tmdb } from "./tmdb.js";
-import { hashSHA256 } from "../utils/crypto.js";
-import { EStreamInsert } from "../db/schema/streams.js";
 
 export interface SearchResult {
   id: number;
@@ -97,8 +97,7 @@ class KissKHScraperr extends BaseProvider {
   readonly urls = ENV.KISSKH_URLS;
   readonly baseUrl: string = "https://kisskh.co";
   getBaseUrl() {
-    const randomIndex = Math.floor(Math.random() * this.urls.length);
-    return this.urls[randomIndex];
+    return getKisskhBaseUrl();
   }
   readonly supportedPrefix: Prefix[] = [
     Prefix.IMDB,
@@ -696,12 +695,16 @@ class KissKHScraperr extends BaseProvider {
     this.logger.log(`GET stream | ${url}`);
     try {
       const stream = await axiosGet<StreamResponse>(url, { timeout: 15000 });
-      if (!stream) return null;
+      if (!stream) {
+        return null;
+      }
       this.logger.log(`Stream Url | ${stream.Video}`);
       return stream;
     } catch (error) {
       this.logger.error(`Fail to get stream | ${error}`);
-      if (error instanceof RateLimitError) return { Video: RATE_LIMIT_NAME };
+      if (error instanceof RateLimitError) {
+        return { Video: RATE_LIMIT_NAME };
+      }
       return null;
     }
   }

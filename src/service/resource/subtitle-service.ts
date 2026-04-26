@@ -1,5 +1,9 @@
 import { Subtitle } from "@stremio-addon/sdk";
-import { getSubtitle, getSubtitlesJoinProvider } from "../../db/queries.js";
+import {
+  getCountSubtitles,
+  getSubtitle,
+  getSubtitlesJoinProvider,
+} from "../../db/queries.js";
 import { API, SUBTITLES } from "../../utils/constant.js";
 import { getOrigin } from "../../utils/domain.js";
 
@@ -36,6 +40,13 @@ class SubtitleService {
   }
   static getSubtitleUrl(id: string) {
     return `${getOrigin()}/${API}/${SUBTITLES}/${id}.vtt`;
+  }
+
+  static async getTotalSubtitles() {
+    const subtitles = await getCountSubtitles();
+    if (!subtitles) return 0;
+    const total = subtitles[0]?.count ?? 0;
+    return total;
   }
 }
 export default SubtitleService;

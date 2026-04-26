@@ -1,7 +1,7 @@
 import { Umami } from "@umami/node";
 import { ENV } from "../env.js";
 
-const umami = ENV.ENABLE_ANALYTICS ? new Umami() : null;
+const umami = ENV.UMAMI_ENABLED ? new Umami() : null;
 umami?.init({
   websiteId: ENV.UMAMI_WEBSITE_ID,
   hostUrl: ENV.UMAMI_URL,

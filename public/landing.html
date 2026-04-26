@@ -22,7 +22,7 @@
     <meta name="twitter:image"
         content="https://og.tamthai.de/api/og?title=yastream&description=Stream%20asian%20dramas%2C%20series%2C%20and%20movies.%20Created%20by%20tamthai.de">
     <link rel="icon" href="/img/yas.png">
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/css/style.css">
     <!-- Umami tracking -->
     <script defer src="https://umami-fs.tamthai.de/script.js"
         data-website-id="f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"></script>
@@ -123,13 +123,20 @@
                         <div class="tooltip-text">
                             <p>- Some movies have DUB (thuyết minh)</p>
                             <p>- Sometimes has AD</p>
-                            <p>- Requires Vietnamese VPN/Mediaflow-proxy</p>
+                            <p>- Requires VPN/Mediaflow-proxy from Vietnam</p>
                         </div>
                     </div>
                     <input class="switch" type="checkbox" id="stream.kkphim" />
                 </div>
                 <div class="config-item">
                     <label for="stream.ophim">ophim&nbsp; | Vietnamese</label>
+                    <div class="tooltip">
+                        (i)
+                        <div class="tooltip-text">
+                            <p>- Sometimes has AD</p>
+                            <p>- Requires VPN/Mediaflow-proxy from Vietnam</p>
+                        </div>
+                    </div>
                     <input class="switch" type="checkbox" id="stream.ophim" />
                 </div>
                 <h3 class="configure-type">Filter and display</h3>
@@ -186,7 +193,7 @@
         <div id="install">
             <div class="grid-btn">
                 <a data-umami-event="installApp" id="installApp" target="_blank" rel="noopener noreferrer"
-                    class="btn btn-primary">Install App
+                    class="btn btn-primary">Install Stremio
                     <svg class="icon">
                         <use href="/icons.svg#external"></use>
                     </svg>

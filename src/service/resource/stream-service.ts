@@ -1,5 +1,9 @@
 import { Stream } from "@stremio-addon/sdk";
-import { getStream, getStreamsJoinProvider } from "../../db/queries.js";
+import {
+  getCountStream,
+  getStream,
+  getStreamsJoinProvider,
+} from "../../db/queries.js";
 import { API, STREAMS } from "../../utils/constant.js";
 import { getOrigin } from "../../utils/domain.js";
 import { UserConfig } from "../../lib/manifest.js";
@@ -81,6 +85,13 @@ class StreamService {
 
   static getStreamUrl(id: string) {
     return `${getOrigin()}/${API}/${STREAMS}/${id}.m3u8`;
+  }
+
+  static async getTotalStreams() {
+    const streams = await getCountStream();
+    if (!streams) return 0;
+    const total = streams[0]?.count ?? 0;
+    return total;
   }
 }
 

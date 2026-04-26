@@ -74,3 +74,8 @@ export function cleanUrl(url: string) {
   }
   return url.replace(/\?.*$/, "");
 }
+
+export function getHostname(url: string) {
+  const hostname = new URL(url).hostname;
+  return hostname;
+}

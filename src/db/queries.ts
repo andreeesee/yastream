@@ -1,5 +1,5 @@
 import type { ContentType } from "@stremio-addon/sdk";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, count, eq, lt, sql } from "drizzle-orm";
 import type { ContentDetail } from "../source/meta.js";
 import { Logger } from "../utils/logger.js";
 import { db } from "./drizzle.js";
@@ -136,6 +136,14 @@ export async function getProviderContent(
   return row;
 }
 
+export async function getCountProviderContent() {
+  if (!db) return;
+  const number = await db
+    .select({ count: count(providerContent.id) })
+    .from(providerContent);
+  return number;
+}
+
 // STREAMS
 export async function upsertStream(stream: Omit<EStreamInsert, "createdAt">[]) {
   if (!db) return;
@@ -206,6 +214,11 @@ export async function getStreamsJoinProvider(
       ),
     );
   return rows;
+}
+export async function getCountStream() {
+  if (!db) return;
+  const number = await db.select({ count: count(streams.id) }).from(streams);
+  return number;
 }
 
 // SUBTITLES
@@ -280,6 +293,13 @@ export async function getSubtitlesJoinProvider(
     );
   return row;
 }
+export async function getCountSubtitles() {
+  if (!db) return;
+  const number = await db
+    .select({ count: count(subtitles.id) })
+    .from(subtitles);
+  return number;
+}
 
 // KV
 export function setKv(
@@ -308,6 +328,7 @@ export function setKv(
     })
     .run();
 }
+
 export function getKv(key: string) {
   if (!db) return;
   const row = db.query.kv.findFirst({
@@ -316,7 +337,26 @@ export function getKv(key: string) {
   return row.sync();
 }
 
+export function deleteKv(key: string) {
+  if (!db) return;
+  const row = db.delete(kv).where(eq(kv.key, key));
+  return row;
+}
+
 export function cleanKv() {
   if (!db) return;
-  db.delete(kv).where(lt(kv.expiresAt, Date.now())).run();
+  cleanKvChunked();
+}
+async function cleanKvChunked(limit = 1000) {
+  if (!db) return;
+
+  while (true) {
+    logger.log(`Cleaning KV | ${limit}`);
+    const result = await db
+      .delete(kv)
+      .where(lt(kv.expiresAt, Date.now()))
+      .limit(limit);
+
+    if (result.changes === 0) break;
+  }
 }

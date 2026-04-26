@@ -1,4 +1,4 @@
-import { cleanKv, getKv, setKv } from "../db/queries.js";
+import { cleanKv, deleteKv, getKv, setKv } from "../db/queries.js";
 import { ENV } from "./env.js";
 import { Logger } from "./logger.js";
 
@@ -19,7 +19,7 @@ class GlobalCache {
       () => {
         try {
           cleanKv();
-          logger.debug("Cleaned expired KV entries");
+          logger.log("Cleaned expired KV entries");
         } catch (e) {
           logger.error(`Failed to clean KV | ${e}`);
         }
@@ -69,6 +69,8 @@ class GlobalCache {
       const kvCache = getKv(key);
       if (kvCache && Date.now() < kvCache.expiresAt) {
         return JSON.parse(kvCache.value);
+      } else {
+        deleteKv(key);
       }
       return null;
     }
@@ -92,7 +94,7 @@ class GlobalCache {
     }
   }
 
-  getDebugData() {
+  getCacheData() {
     const entries = this.cache.entries();
     Array.from(entries).map(([key, entry]) => ({
       key,

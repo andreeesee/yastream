@@ -24,8 +24,12 @@ export const db = sqlite.db
 
 export function initMigrations() {
   try {
-    if (db) migrate(db, { migrationsFolder: "drizzle" });
-    logger.log('Migration completed');
+    if (db) {
+      migrate(db, { migrationsFolder: "drizzle" });
+      logger.log("Migration completed");
+    } else {
+      logger.log("Migration skipped: Database not initialized");
+    }
   } catch (err) {
     logger.log(`Migration skipped: ${err}`);
   }

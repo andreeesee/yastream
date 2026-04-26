@@ -1,3 +1,9 @@
+# v0.7.1 2026-04-26
+
+- Improve dashboard
+- Rotate different sites for availability with metrics-based selection
+- Chunk delete kv table
+
 # v0.7.0 2026-04-24
 
 - Add api for get streams and subtitles from db

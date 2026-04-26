@@ -1,6 +1,6 @@
 {
   "name": "yastream",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Yet Another Stream. Stream asian dramas, series and movies directly with multiple providers. Support catalogs with country selection. Powered by TMDB and TVDB for metadata",
   "scripts": {
     "start": "node --env-file=.env dist/server.js",
@@ -18,7 +18,7 @@
     "@hono/node-server": "^1.19.14",
     "@stremio-addon/sdk": "github:hoangtamthai/stremio-addon-sdk#sdk",
     "@umami/node": "^0.4.0",
-    "axios": "^1.15.1",
+    "axios": "^1.15.2",
     "axios-rate-limit": "^1.9.0",
     "better-sqlite3": "^12.9.0",
     "cheerio": "^1.2.0",
@@ -26,8 +26,10 @@
     "drizzle-orm": "^0.45.2",
     "fuse.js": "^7.3.0",
     "fuzzball": "^2.2.3",
-    "hono": "^4.12.14",
+    "hono": "^4.12.15",
     "hono-rate-limiter": "^0.5.3",
+    "hono-tailwind": "^3.0.1",
+    "tailwindcss": "^4.2.4",
     "uuidv7": "^1.2.1",
     "zod": "^4.3.6"
   },

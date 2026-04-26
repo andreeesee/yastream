@@ -42,16 +42,17 @@ const envSchema = z.object({
   SUBTITLES_REQUEST_LIMIT: z.coerce.number().default(10),
 
   // Analytics
-  ENABLE_ANALYTICS: z.coerce.boolean().default(false),
+  UMAMI_ENABLED: z.coerce.boolean().default(false),
   UMAMI_WEBSITE_ID: z.string().default("f4af25ed-caf9-4fe2-ae07-7f0d50f5a51c"),
   UMAMI_URL: z.url().default("https://umami-fs.tamthai.de"),
 
   // Notification
   NTFY_URL: z.url().default(""),
 
-  // Database (optional - only used when DATABASE_URL is set)
-  DATABASE_URL: z.string().optional(),
-  DATABASE_CLEAN_KV_MINUTES: z.coerce.number().default(60),
+  // Database (optional - only used when DATABASE_ENABLED is true)
+  DATABASE_ENABLED: z.coerce.boolean().default(false),
+  DATABASE_URL: z.string().default("data/yastream.db"),
+  DATABASE_CLEAN_KV_MINUTES: z.coerce.number().default(20),
 
   // Kisskh domains
   KISSKH_URLS: z

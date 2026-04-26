@@ -6,6 +6,7 @@ import { cache } from "./cache.js";
 import { ENV } from "./env.js";
 import { RateLimitError } from "./error.js";
 import { Logger } from "./logger.js";
+import { getHostname } from "./format.js";
 
 // process.setMaxListeners(20);
 EventEmitter.defaultMaxListeners = 23;
@@ -105,25 +106,28 @@ export function getKisskhBaseUrl(): string {
 }
 
 export function markKisskhUrlSuccess(url: string): void {
-  const metrics = kisskhMetrics.get(url) ?? {
+  const host = getHostname(url);
+  const newMetrics = {
     success: 0,
     fail: 0,
     lastUsed: 0,
   };
+  const metrics = kisskhMetrics.get(host) ?? newMetrics;
   metrics.success++;
   metrics.lastUsed = Date.now();
-  kisskhMetrics.set(url, metrics);
+  kisskhMetrics.set(host, metrics);
 }
 
 export function markKisskhUrlFail(url: string): void {
-  const metrics = kisskhMetrics.get(url) ?? {
+  const host = getHostname(url);
+  const metrics = kisskhMetrics.get(host) ?? {
     success: 0,
     fail: 0,
     lastUsed: 0,
   };
   metrics.fail++;
   metrics.lastUsed = Date.now();
-  kisskhMetrics.set(url, metrics);
+  kisskhMetrics.set(host, metrics);
 }
 
 const logger = new Logger("AXIOS");

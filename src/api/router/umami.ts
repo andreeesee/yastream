@@ -5,7 +5,7 @@ import { ENV } from "../../utils/env.js";
 
 // Umami Tracking for specific paths
 const analytics = new Hono();
-if (ENV.ENABLE_ANALYTICS) {
+if (ENV.UMAMI_ENABLED) {
   analytics.on(
     "GET",
     [

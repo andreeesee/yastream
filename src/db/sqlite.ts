@@ -42,6 +42,6 @@ class DatabaseManager {
   }
 }
 
-export const db = ENV.DATABASE_URL
+export const db = ENV.DATABASE_ENABLED
   ? new DatabaseManager(ENV.DATABASE_URL)
   : null;
