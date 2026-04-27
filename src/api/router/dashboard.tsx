@@ -108,7 +108,7 @@ dashboard.get("/", async (c) => {
     return c.text("Cache cleared successfully", 200);
   }
 
-  const data = cache.getCacheData();
+  const data = cache.getCacheStats();
   const page = parseInt(c.req.query("page") ?? "0");
 
   const totalContent = await ProviderService.getTotalProviderContent();
@@ -126,8 +126,8 @@ dashboard.get("/", async (c) => {
     0,
   );
 
-  const cacheData = data.data.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const totalPages = Math.ceil(data.data.length / PAGE_SIZE);
+  // const cacheData = data.data.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // const totalPages = Math.ceil(data.data.length / PAGE_SIZE);
 
   return c.html(
     <html>
@@ -295,7 +295,7 @@ dashboard.get("/", async (c) => {
             </div>
           </section>
 
-          <div class="flex gap-3 my-5">
+          {/* <div class="flex gap-3 my-5">
             <a
               href={`/dashboard?key=${userKey}&page=${Math.max(0, page - 1)}`}
               class={`px-4 py-2 rounded-box transition-colors ${page === 0 ? "bg-secondary-background/50 text-secondary-foreground pointer-events-none" : "bg-secondary-background hover:bg-accent"}`}
@@ -311,9 +311,9 @@ dashboard.get("/", async (c) => {
             >
               Next
             </a>
-          </div>
+          </div> */}
 
-          <div class="overflow-x-auto bg-secondary-background rounded-box max-h-96">
+          {/* <div class="overflow-x-auto bg-secondary-background rounded-box max-h-96">
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b-2 border-border-foreground sticky top-0 bg-secondary-background">
@@ -341,7 +341,7 @@ dashboard.get("/", async (c) => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div> */}
         </div>
       </body>
     </html>,

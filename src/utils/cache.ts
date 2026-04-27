@@ -93,7 +93,7 @@ class GlobalCache {
     }
   }
 
-  getCacheData() {
+  getCacheStats() {
     const entries = this.cache.entries();
     Array.from(entries).map(([key, entry]) => ({
       key,
@@ -104,13 +104,6 @@ class GlobalCache {
       memoryUsed: (this.currentByteSize / (1024 * 1024)).toFixed(2),
       maxLimit: (this.MAX_BYTES / (1024 * 1024)).toFixed(2),
       usagePercent: ((this.currentByteSize / this.MAX_BYTES) * 100).toFixed(1),
-      keys: Array.from(this.cache.keys()),
-      data: Array.from(this.cache.entries()).map(([key, entry]) => ({
-        key,
-        value: entry.value,
-        sizeMB: (entry.size / (1024 * 1024)).toFixed(2),
-        expiresAt: new Date(entry.expiresAt),
-      })),
     };
   }
 
