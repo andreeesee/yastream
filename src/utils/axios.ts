@@ -5,8 +5,8 @@ import { decryptString } from "../source/onetouchtv-crypto.js";
 import { cache } from "./cache.js";
 import { ENV } from "./env.js";
 import { RateLimitError } from "./error.js";
+import { getOrigin } from "./format.js";
 import { Logger } from "./logger.js";
-import { getHostname } from "./format.js";
 
 // process.setMaxListeners(20);
 EventEmitter.defaultMaxListeners = 23;
@@ -106,7 +106,7 @@ export function getKisskhBaseUrl(): string {
 }
 
 export function markKisskhUrlSuccess(url: string): void {
-  const host = getHostname(url);
+  const host = getOrigin(url);
   const newMetrics = {
     success: 0,
     fail: 0,
@@ -119,7 +119,7 @@ export function markKisskhUrlSuccess(url: string): void {
 }
 
 export function markKisskhUrlFail(url: string): void {
-  const host = getHostname(url);
+  const host = getOrigin(url);
   const metrics = kisskhMetrics.get(host) ?? {
     success: 0,
     fail: 0,
@@ -166,6 +166,7 @@ export async function axiosGet<T>(
       }
       if (!isRateLimit) break;
       if (http === kisskhClient) {
+        console.log("markKisskhUrlFail", url);
         markKisskhUrlFail(url);
       }
       const delay = ENV.RETRY_DELAY_MS * attempt;

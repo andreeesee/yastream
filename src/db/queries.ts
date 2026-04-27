@@ -350,7 +350,6 @@ export function cleanKv() {
 async function cleanKvLimit(limit = 1000) {
   if (!db) return;
 
-  logger.log(`Cleaning KV | ${limit}`);
   const result = await db
     .delete(kv)
     .where(lt(kv.expiresAt, Date.now()))
