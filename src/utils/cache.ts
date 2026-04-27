@@ -19,7 +19,6 @@ class GlobalCache {
       () => {
         try {
           cleanKv();
-          logger.log("Cleaned expired KV entries");
         } catch (e) {
           logger.error(`Failed to clean KV | ${e}`);
         }

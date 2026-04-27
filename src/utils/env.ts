@@ -14,7 +14,7 @@ const envSchema = z.object({
   // Optional key
   TVDB_API_KEY: z.string().default(""),
   TMDB_KEY: z.string().default(""),
-  RPDB_API_KEY: z.string().default("t0-free-rpdb"),
+  RPDB_API_KEY: z.string().default("t0-free-rpdb-rounded-blocks"),
   DEBUG_KEY: z.string().default("debug-key"),
 
   // Server configuration

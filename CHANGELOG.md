@@ -1,8 +1,9 @@
 # v0.7.1 2026-04-26
 
-- Improve dashboard
+- Default RPDB poster to rounded blocks
+- Improve admin dashboard with more metrics
 - Rotate different sites for availability with metrics-based selection
-- Chunk delete kv table
+- Limit delete kv table
 
 # v0.7.0 2026-04-24
 

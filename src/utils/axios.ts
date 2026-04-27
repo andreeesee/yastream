@@ -150,9 +150,6 @@ export async function axiosGet<T>(
       const response = await http.get(url, { timeout: 10000, ...config });
       const data = response.data;
       cache.set(urlKey, data, cacheMs);
-      if (http === kisskhClient) {
-        markKisskhUrlSuccess(url);
-      }
       return data as T;
     } catch (error: AxiosError | unknown) {
       lastError = error;
@@ -165,10 +162,6 @@ export async function axiosGet<T>(
         isRateLimit = isRateLimit || errorStatus === HttpStatusCode.NotFound;
       }
       if (!isRateLimit) break;
-      if (http === kisskhClient) {
-        console.log("markKisskhUrlFail", url);
-        markKisskhUrlFail(url);
-      }
       const delay = ENV.RETRY_DELAY_MS * attempt;
       logger.log(`Retry ${attempt} | ${url}`);
       const retryAfter = delay + Math.random() * ENV.RETRY_JITTER_MS;

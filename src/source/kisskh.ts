@@ -23,7 +23,12 @@ import { COMMON_TTL } from "../db/sqlite.js";
 import { Prefix, UserConfig } from "../lib/manifest.js";
 import StreamService from "../service/resource/stream-service.js";
 import SubtitleService from "../service/resource/subtitle-service.js";
-import { axiosGet, getKisskhBaseUrl } from "../utils/axios.js";
+import {
+  axiosGet,
+  getKisskhBaseUrl,
+  markKisskhUrlFail,
+  markKisskhUrlSuccess,
+} from "../utils/axios.js";
 import { cache } from "../utils/cache.js";
 import { RATE_LIMIT_NAME } from "../utils/constant.js";
 import { hashSHA256 } from "../utils/crypto.js";
@@ -699,10 +704,12 @@ class KissKHScraperr extends BaseProvider {
         return null;
       }
       this.logger.log(`Stream Url | ${stream.Video}`);
+      markKisskhUrlSuccess(url);
       return stream;
     } catch (error) {
       this.logger.error(`Fail to get stream | ${error}`);
       if (error instanceof RateLimitError) {
+        markKisskhUrlFail(url);
         return { Video: RATE_LIMIT_NAME };
       }
       return null;
