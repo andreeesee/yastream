@@ -345,18 +345,14 @@ export function deleteKv(key: string) {
 
 export function cleanKv() {
   if (!db) return;
-  cleanKvChunked();
+  cleanKvLimit();
 }
-async function cleanKvChunked(limit = 1000) {
+async function cleanKvLimit(limit = 1000) {
   if (!db) return;
 
-  while (true) {
-    logger.log(`Cleaning KV | ${limit}`);
-    const result = await db
-      .delete(kv)
-      .where(lt(kv.expiresAt, Date.now()))
-      .limit(limit);
-
-    if (result.changes === 0) break;
-  }
+  logger.log(`Cleaning KV | ${limit}`);
+  const result = await db
+    .delete(kv)
+    .where(lt(kv.expiresAt, Date.now()))
+    .limit(limit);
 }
